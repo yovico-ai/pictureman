@@ -8,6 +8,7 @@ mod assets;
 mod canvas;
 mod commands;
 mod doc;
+mod platform;
 mod settings;
 mod tools;
 
@@ -82,6 +83,9 @@ enum Dialog {
     Op(Cmd, OpParams),
     Text(egui::Pos2, OpParams),
     WandOptions,
+    /// Save As in the browser: the download's file name.
+    #[cfg(target_arch = "wasm32")]
+    SaveName(String),
 }
 
 /// An operation running on a worker thread.
@@ -118,6 +122,9 @@ pub struct App {
     splash_until: f64,
     recent: Vec<PathBuf>,
     zoom_accum: f32,
+    files: platform::Files,
+    /// Paste-from parameters while the file picker is open.
+    paste_params: Option<OpParams>,
     last_area: Area,
     zoom_latched: bool,
     /// Last settings text written, to save only on change.
@@ -214,6 +221,8 @@ impl App {
             splash_until: 2.5,
             recent: loaded.recent,
             zoom_accum: 0.0,
+            files: platform::Files::default(),
+            paste_params: None,
             last_area: Area::Whole,
             zoom_latched: false,
             saved_settings: String::new(),
@@ -273,44 +282,85 @@ impl App {
         }
     }
 
-    fn image_filters(d: rfd::FileDialog) -> rfd::FileDialog {
-        let all: Vec<&str> = Format::ALL
-            .iter()
-            .filter(|f| f.can_read())
-            .flat_map(|f| f.extensions().iter().copied())
-            .collect();
-        let mut d = d.add_filter("All images", &all);
-        for f in Format::ALL.iter().filter(|f| f.can_read()) {
-            d = d.add_filter(f.description(), f.extensions());
-        }
-        d
-    }
-
     fn open_dialog(&mut self) {
-        if let Some(paths) =
-            Self::image_filters(rfd::FileDialog::new().set_title("Open Source")).pick_files()
-        {
-            for p in paths {
-                self.open_path(p);
-            }
-        }
+        self.files.request(platform::Purpose::Open, "Open Source");
     }
 
-    fn pick_image(&mut self, title: &str) -> Option<(Image, String)> {
-        let path = Self::image_filters(rfd::FileDialog::new().set_title(title)).pick_file()?;
-        match formats::load(&path) {
-            Ok(img) => Some((
-                img,
-                path.file_name()
-                    .map_or(String::new(), |n| n.to_string_lossy().into_owned()),
-            )),
+    /// Files arrive from the file picker (on the desktop at once, in the
+    /// browser asynchronously) or dropped on the window.
+    fn handle_picked(&mut self, p: platform::Picked) {
+        if p.bytes.is_empty() {
+            self.message = Some(format!("Can't open file {}", p.name));
+            return;
+        }
+        let hint = Format::from_path(std::path::Path::new(&p.name));
+        let img = match formats::load_bytes(&p.bytes, hint) {
+            Ok(img) => img,
             Err(e) => {
-                self.message = Some(format!("Can't open file {}: {e}", path.display()));
-                None
+                self.message = Some(format!("Can't open file {}: {e}", p.name));
+                return;
+            }
+        };
+        match p.purpose {
+            platform::Purpose::Open => {
+                if let Some(path) = &p.path {
+                    self.remember(path);
+                }
+                self.add_doc(p.name, p.path, img);
+            }
+            platform::Purpose::Pattern => {
+                if let Some(Dialog::Op(_, params)) = &mut self.dialog {
+                    params.pattern = Some(Arc::new(img));
+                    params.pattern_name = p.name;
+                }
+            }
+            platform::Purpose::PasteFrom => {
+                if let Some(params) = self.paste_params.take() {
+                    self.start_place(apply::paste_fragment(img, &params));
+                }
             }
         }
     }
 
+    /// In the browser, saving downloads the image (Save As asks for a name).
+    #[cfg(target_arch = "wasm32")]
+    fn save(&mut self, ask: bool) {
+        let Some(doc) = self.docs.get(self.active) else {
+            return;
+        };
+        if ask {
+            self.dialog = Some(Dialog::SaveName(doc.name.clone()));
+        } else {
+            let name = doc.name.clone();
+            self.download(name);
+        }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn download(&mut self, mut name: String) {
+        let Some(doc) = self.docs.get_mut(self.active) else {
+            return;
+        };
+        let format = match Format::from_path(std::path::Path::new(&name)) {
+            Some(f) => f,
+            None => {
+                name.push_str(".png");
+                Format::Png
+            }
+        };
+        let r = formats::encode(&doc.img, format)
+            .map_err(|e| e.to_string())
+            .and_then(|bytes| platform::download(&name, &bytes));
+        match r {
+            Ok(()) => {
+                doc.name = name;
+                doc.modified = false;
+            }
+            Err(e) => self.message = Some(format!("Can't save file: {e}")),
+        }
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
     fn save(&mut self, ask: bool) {
         let Some(doc) = self.docs.get_mut(self.active) else {
             return;
@@ -458,6 +508,15 @@ impl App {
                     Ok((transform::resize(&src, nw, nh), rng))
                 });
             }
+            #[cfg(target_arch = "wasm32")]
+            Cmd::Paste => {
+                self.message = Some(
+                    "Paste from the clipboard isn't available in the browser; use Paste from…"
+                        .into(),
+                );
+                return;
+            }
+            #[cfg(not(target_arch = "wasm32"))]
             Cmd::Paste => {
                 let img = arboard::Clipboard::new()
                     .and_then(|mut c| c.get_image())
@@ -488,9 +547,9 @@ impl App {
                 return;
             }
             Cmd::PasteFrom => {
-                if let Some((img, _)) = self.pick_image("Paste from") {
-                    self.start_place(apply::paste_fragment(img, &params));
-                }
+                self.paste_params = Some(params);
+                self.files
+                    .request(platform::Purpose::PasteFrom, "Paste from");
                 return;
             }
             _ => {}
@@ -545,6 +604,13 @@ impl App {
         }
         let whole = self.tools.area == Area::Whole;
         match cmd {
+            #[cfg(target_arch = "wasm32")]
+            Cmd::Copy => {
+                let _ = d;
+                self.message =
+                    Some("Copy to the clipboard isn't available in the browser; use Save".into());
+            }
+            #[cfg(not(target_arch = "wasm32"))]
             Cmd::Copy => {
                 let img = d.img.crop(roi);
                 let raw: Vec<u8> = img
@@ -645,12 +711,10 @@ impl App {
         }
         let src = d.img.clone();
         let rng = self.rng.clone();
-        let (tx, rx) = mpsc::channel();
-        std::thread::spawn(move || {
+        let rx = platform::spawn(move || {
             // A panic in an operation must not take the program down.
-            let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| f(src, rng)))
-                .unwrap_or_else(|_| Err("Unknown error.".to_string()));
-            let _ = tx.send(r);
+            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| f(src, rng)))
+                .unwrap_or_else(|_| Err("Unknown error.".to_string()))
         });
         self.job = Some(Job {
             doc: d.id,
@@ -1037,6 +1101,7 @@ impl App {
                 item(ui, "Save", Some("Ctrl+S"), Cmd::Save, has_doc, &mut chosen);
                 item(ui, "Save As…", None, Cmd::SaveAs, has_doc, &mut chosen);
                 ui.separator();
+                #[cfg(not(target_arch = "wasm32"))]
                 item(ui, "Exit", None, Cmd::Exit, true, &mut chosen);
             });
             ui.menu_button("Edit", |ui| {
@@ -1281,12 +1346,7 @@ impl App {
                         }
                     });
                 });
-                if env.choose_pattern
-                    && let Some((img, name)) = self.pick_image("Pattern")
-                {
-                    params.pattern = Some(Arc::new(img));
-                    params.pattern_name = name;
-                }
+                let choose_pattern = env.choose_pattern;
                 let pattern_missing = matches!(
                     cmd,
                     Cmd::PatternTiled | Cmd::PatternScaled | Cmd::PatternFitted
@@ -1302,6 +1362,36 @@ impl App {
                     }
                     Some(false) => self.preview = None,
                     None => self.dialog = Some(Dialog::Op(cmd, params)),
+                }
+                // The chosen pattern is put into the open dialog when it arrives.
+                if choose_pattern {
+                    self.files.request(platform::Purpose::Pattern, "Pattern");
+                }
+            }
+            #[cfg(target_arch = "wasm32")]
+            Some(Dialog::SaveName(mut name)) => {
+                let mut result = None;
+                egui::Modal::new(egui::Id::new("save-name")).show(ctx, |ui| {
+                    ui.heading("Save As");
+                    ui.label("File name (the extension picks the format)");
+                    ui.text_edit_singleline(&mut name);
+                    ui.horizontal(|ui| {
+                        if ui.button("Download").clicked()
+                            || ui.input(|i| i.key_pressed(egui::Key::Enter))
+                        {
+                            result = Some(true);
+                        }
+                        if ui.button("Cancel").clicked()
+                            || ui.input(|i| i.key_pressed(egui::Key::Escape))
+                        {
+                            result = Some(false);
+                        }
+                    });
+                });
+                match result {
+                    Some(true) => self.download(name),
+                    Some(false) => {}
+                    None => self.dialog = Some(Dialog::SaveName(name)),
                 }
             }
             Some(Dialog::Text(at, mut params)) => {
@@ -1448,15 +1538,21 @@ impl App {
             d.zoom = ZOOMS[k as usize];
             d.mark_stale();
         }
-        let dropped: Vec<PathBuf> = ctx.input(|i| {
-            i.raw
-                .dropped_files
-                .iter()
-                .filter_map(|f| f.path.clone())
-                .collect()
-        });
-        for p in dropped {
-            self.open_path(p);
+        let dropped: Vec<egui::DroppedFile> = ctx.input(|i| i.raw.dropped_files.clone());
+        for f in dropped {
+            match (f.path, f.bytes) {
+                (Some(p), _) => self.open_path(p),
+                (None, Some(bytes)) => self.handle_picked(platform::Picked {
+                    purpose: platform::Purpose::Open,
+                    name: f.name,
+                    path: None,
+                    bytes: bytes.to_vec(),
+                }),
+                _ => {}
+            }
+        }
+        for p in self.files.poll() {
+            self.handle_picked(p);
         }
     }
 }

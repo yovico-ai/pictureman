@@ -10,17 +10,24 @@ readme = "README.md"
 keywords = ["image-editor", "image-processing", "retro", "egui"]
 categories = ["multimedia::images", "graphics"]
 
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+arboard = "3.6.1"
+rayon = "1.12.0"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+js-sys = "0.3"
+wasm-bindgen-futures = "0.4"
+web-sys = { version = "0.3", features = ["Blob", "Document", "Element", "HtmlAnchorElement", "HtmlCanvasElement", "Url", "Window"] }
+
 [profile.release]
 lto = "thin"
 strip = true
 
 [dependencies]
 ab_glyph = "0.2.32"
-arboard = "3.6.1"
 eframe = "0.35"
 epaint_default_fonts = "0.35"
-image = "0.25"
-rayon = "1.12.0"
+image = { version = "0.25", default-features = false, features = ["bmp", "gif", "jpeg", "png", "tga", "tiff"] }
 rfd = "0.17"
 
 [target.'cfg(windows)'.build-dependencies]

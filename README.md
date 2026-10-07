@@ -10,6 +10,13 @@ specs, with original addresses and pseudocode, and the tools used.
 
 ![Picture Man](docs/screenshot.png)
 
+## Try it in your browser
+
+**https://yovico-ai.github.io/pictureman/** runs the same code compiled to
+WebAssembly, inside the browser's sandbox; nothing is installed. Files are
+opened with the browser's file picker and saved as downloads. (The
+clipboard and settings are desktop-only.)
+
 ## Install
 
 There are no prebuilt binaries: build it from source with
@@ -21,6 +28,10 @@ pictureman [image files…]
 ```
 
 Or from a checkout: `cargo run --release -- [image files…]`.
+
+The web version builds with [trunk](https://trunkrs.dev):
+`rustup target add wasm32-unknown-unknown`, `cargo install trunk`, then
+`trunk serve` (or `trunk build --release`).
 
 ## Using it
 

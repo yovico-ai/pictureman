@@ -2,6 +2,7 @@
 
 use pictureman::ui::{App, AppAssets};
 
+#[cfg(not(target_arch = "wasm32"))]
 fn main() -> eframe::Result {
     // Like the original, an image file can be passed on the command line.
     let files = std::env::args_os().skip(1).map(Into::into).collect();
@@ -17,4 +18,35 @@ fn main() -> eframe::Result {
         options,
         Box::new(|cc| Ok(Box::new(App::new(cc, files)))),
     )
+}
+
+/// In the browser: run in the page's canvas.
+#[cfg(target_arch = "wasm32")]
+fn main() {
+    use eframe::wasm_bindgen::JsCast;
+    let _ = AppAssets::window_icon;
+    wasm_bindgen_futures::spawn_local(async {
+        let document = web_sys::window()
+            .and_then(|w| w.document())
+            .expect("no document");
+        let canvas = document
+            .get_element_by_id("picture_man")
+            .expect("no canvas")
+            .dyn_into::<web_sys::HtmlCanvasElement>()
+            .expect("not a canvas");
+        let start = eframe::WebRunner::new()
+            .start(
+                canvas,
+                eframe::WebOptions::default(),
+                Box::new(|cc| Ok(Box::new(App::new(cc, Vec::new())))),
+            )
+            .await;
+        if let Err(e) = start {
+            if let Some(el) = document.get_element_by_id("loading") {
+                el.set_text_content(Some(&format!("Picture Man could not start: {e:?}")));
+            }
+        } else if let Some(el) = document.get_element_by_id("loading") {
+            el.remove();
+        }
+    });
 }

@@ -10,6 +10,7 @@ pub enum Cmd {
     Reload = 139,
     Save = 118,
     SaveAs = 114,
+    #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
     Exit = 116,
     // Edit
     Undo = 121,

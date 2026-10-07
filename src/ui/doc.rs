@@ -11,6 +11,7 @@ const UNDO_DEPTH: usize = 16;
 pub struct Doc {
     pub id: u64,
     pub name: String,
+    #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
     pub path: Option<PathBuf>,
     pub img: Image,
     undo: Vec<Image>,

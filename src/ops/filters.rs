@@ -23,6 +23,7 @@
 //!   exactly.
 
 use crate::core::{Image, Rect, Rgb};
+#[cfg(not(target_arch = "wasm32"))]
 use rayon::prelude::*;
 
 /// "Filter size" (dialog `SETARRAYSIZE`, proc `SETMATRICSIZEDLGPROC` at
@@ -99,8 +100,12 @@ where
         .map(|i| (roi.x as isize - half_x + i as isize).clamp(0, xmax) as usize)
         .collect();
 
-    let rows: Vec<Vec<Rgb>> = (0..roi.h)
-        .into_par_iter()
+    // Rows in parallel on the desktop; the browser has one thread.
+    #[cfg(not(target_arch = "wasm32"))]
+    let rows_iter = (0..roi.h).into_par_iter();
+    #[cfg(target_arch = "wasm32")]
+    let rows_iter = 0..roi.h;
+    let rows: Vec<Vec<Rgb>> = rows_iter
         .map(|dy| {
             let y = (roi.y + dy) as isize;
             let bufs: Vec<Vec<Rgb>> = (0..fy)

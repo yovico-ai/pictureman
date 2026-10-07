@@ -127,19 +127,23 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 /// Load any supported image as 24-bit RGB.
 pub fn load(path: &Path) -> Result<Image> {
-    let bytes = std::fs::read(path)?;
-    // Sniff content first, like the converters' MAGIC export, then fall back
-    // to the extension.
-    if pcx::is_pcx(&bytes) {
-        return pcx::decode(&bytes);
+    load_bytes(&std::fs::read(path)?, Format::from_path(path))
+}
+
+/// Decode an image from memory. The content is sniffed first, like the
+/// converters' MAGIC export; `hint` (usually from the file name) is the
+/// fallback.
+pub fn load_bytes(bytes: &[u8], hint: Option<Format>) -> Result<Image> {
+    if pcx::is_pcx(bytes) {
+        return pcx::decode(bytes);
     }
-    let fmt = image::guess_format(&bytes)
+    let fmt = image::guess_format(bytes)
         .ok()
-        .or_else(|| Format::from_path(path).and_then(Format::image_format));
+        .or_else(|| hint.and_then(Format::image_format));
     let Some(fmt) = fmt else {
         return Err(Error::UnknownFormat);
     };
-    let mut reader = image::ImageReader::with_format(std::io::Cursor::new(&bytes), fmt);
+    let mut reader = image::ImageReader::with_format(std::io::Cursor::new(bytes), fmt);
     let mut limits = image::Limits::default();
     limits.max_image_width = Some(65_535);
     limits.max_image_height = Some(65_535);
@@ -148,7 +152,7 @@ pub fn load(path: &Path) -> Result<Image> {
     if checked_area(w as usize, h as usize).is_none() {
         return Err(Error::Unsupported(format!("{w}x{h} image is too large")));
     }
-    let mut reader = image::ImageReader::with_format(std::io::Cursor::new(&bytes), fmt);
+    let mut reader = image::ImageReader::with_format(std::io::Cursor::new(bytes), fmt);
     let mut limits = image::Limits::default();
     limits.max_alloc = Some(1 << 30);
     reader.limits(limits);
@@ -160,6 +164,12 @@ pub fn save(path: &Path, img: &Image, format: Option<Format>) -> Result<()> {
     let format = format
         .or_else(|| Format::from_path(path))
         .ok_or(Error::UnknownFormat)?;
+    std::fs::write(path, encode(img, format)?)?;
+    Ok(())
+}
+
+/// Encode an image in `format`.
+pub fn encode(img: &Image, format: Format) -> Result<Vec<u8>> {
     if img.w == 0 || img.h == 0 || img.px.len() != img.w * img.h {
         return Err(Error::Unsupported("empty image".into()));
     }
@@ -169,19 +179,22 @@ pub fn save(path: &Path, img: &Image, format: Option<Format>) -> Result<()> {
             img.w, img.h
         )));
     }
-    match format {
-        Format::Pcx => std::fs::write(path, pcx::encode(img))?,
-        Format::Eps => std::fs::write(path, eps::encode(img, 72))?,
+    Ok(match format {
+        Format::Pcx => pcx::encode(img),
+        Format::Eps => eps::encode(img, 72),
         Format::Jpeg => {
-            let file = std::io::BufWriter::new(std::fs::File::create(path)?);
-            let enc = image::codecs::jpeg::JpegEncoder::new_with_quality(file, 85);
+            let mut out = Vec::new();
+            let enc = image::codecs::jpeg::JpegEncoder::new_with_quality(&mut out, 85);
             img.to_rgb_image().write_with_encoder(enc)?;
+            out
         }
-        other => img
-            .to_rgb_image()
-            .save_with_format(path, other.image_format().expect("handled above"))?,
-    }
-    Ok(())
+        other => {
+            let mut out = std::io::Cursor::new(Vec::new());
+            img.to_rgb_image()
+                .write_to(&mut out, other.image_format().expect("handled above"))?;
+            out.into_inner()
+        }
+    })
 }
 
 #[cfg(test)]

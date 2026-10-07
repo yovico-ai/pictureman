@@ -1,7 +1,7 @@
 //! Tools and their settings, and the toolbox panel drawn with the original
 //! button bitmaps.
 
-use eframe::egui::{self, Color32, RichText};
+use eframe::egui::{self, RichText};
 
 use super::assets::Assets;
 use crate::core::Rgb;
@@ -248,17 +248,8 @@ pub fn toolbox(
 
     section(ui, assets, "bmp_COLOR");
     ui.horizontal(|ui| {
-        let [r, g, b] = t.color;
-        let mut c = Color32::from_rgb(r, g, b);
-        if egui::color_picker::color_edit_button_srgba(
-            ui,
-            &mut c,
-            egui::color_picker::Alpha::Opaque,
-        )
-        .changed()
-        {
-            t.color = [c.r(), c.g(), c.b()];
-        }
+        // Square and bevelled like the bitmap buttons beside it.
+        super::widgets::swatch(ui, &mut t.color, 28.0, true).on_hover_text("Current color");
         let on = t.tool == Tool::Eyedropper;
         if pair_button(
             ui,

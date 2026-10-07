@@ -6,6 +6,7 @@ use std::sync::Arc;
 use eframe::egui::{self, Color32};
 
 use super::commands::Cmd;
+use super::widgets;
 use crate::core::{Image, Mask, MsRand, Rect, Rgb};
 use crate::ops::fill::{Fluctuation, GradientKind, PatchMode, RadialShape};
 use crate::ops::filters::FilterSize;
@@ -29,6 +30,8 @@ pub struct OpParams {
     /// The current ("system") color: plain fill, emboss, background.
     pub color: Rgb,
     pub filter: FilterSize,
+    /// Keep the filter window square.
+    pub square_filter: bool,
     /// TV dialog in user terms: contrast −50..50, brightness and color −255..255.
     pub tv: (i32, i32, i32),
     pub linear: ColorMap,
@@ -58,6 +61,7 @@ impl Default for OpParams {
         OpParams {
             color: [0, 166, 166],
             filter: FilterSize::default(),
+            square_filter: true,
             tv: (0, 0, 0),
             linear: ColorMap::default(),
             gamma: 1.0,
@@ -197,26 +201,60 @@ pub fn prepare(cmd: Cmd, p: &mut OpParams, img: Option<&Image>) {
     }
 }
 
-fn rgb_edit(ui: &mut egui::Ui, c: &mut Rgb) {
-    let mut col = Color32::from_rgb(c[0], c[1], c[2]);
-    if egui::color_picker::color_edit_button_srgba(ui, &mut col, egui::color_picker::Alpha::Opaque)
-        .changed()
-    {
-        *c = [col.r(), col.g(), col.b()];
+/// One line about what the command does (after the 1993 manual).
+pub fn description(cmd: Cmd) -> &'static str {
+    use Cmd::*;
+    match cmd {
+        Smoothing => "Averages each pixel with its neighbours.",
+        SpotRemoving => "Median filter: removes specks and scratches, keeps edges.",
+        Minimum => "Spreads the dark parts of the image.",
+        Maximum => "Spreads the bright parts of the image.",
+        HandDrawing => "Turns the picture into a pencil-like drawing.",
+        CleaningBackground => "Smooths flat areas while keeping contrasty details.",
+        Mosaic => "Divides the picture into flat tiles.",
+        FacetedGlass => "Looks at the picture through faceted glass.",
+        Scatter => "Scatters pixels randomly within the window.",
+        RgbTv => "Adjusts contrast, brightness and color like a TV set.",
+        RgbLinear => "Linear transfer curves for brightness, saturation and each channel.",
+        Gamma => "Lightens or darkens the midtones.",
+        FillFluctuated => "Fills with a natural, fluctuating color.",
+        GradientV | GradientH | GradientRadial => {
+            "Fills with a smooth transition between two colors."
+        }
+        PatternTiled | PatternScaled | PatternFitted => "Fills with a picture used as a pattern.",
+        Deformations => "Reflections in curved mirrors, waves and whirlpools.",
+        Rotate => "Rotates the selection or the whole image.",
+        Size => "Changes the size of the whole image.",
+        New => "Creates an empty image.",
+        Paste | PasteFrom => "How the pasted picture is combined with the image.",
+        _ => "",
     }
 }
 
-fn linear_row(ui: &mut egui::Ui, label: &str, l: &mut Linear) {
-    ui.label(label);
-    let mut pct = l.k * 2;
-    ui.add(
-        egui::Slider::new(&mut pct, 0..=400)
-            .suffix("%")
-            .text("slope"),
-    );
-    l.k = pct / 2;
-    ui.add(egui::Slider::new(&mut l.offset, -255..=255).text("offset"));
-    ui.end_row();
+fn linear_rows(ui: &mut egui::Ui, rows: [(&str, &mut Linear, Color32); 5]) {
+    ui.spacing_mut().slider_width = 110.0;
+    egui::Grid::new("linear")
+        .num_columns(3)
+        .spacing([10.0, 6.0])
+        .show(ui, |ui| {
+            ui.label("");
+            ui.label(egui::RichText::new("Slope").small().weak());
+            ui.label(egui::RichText::new("Offset").small().weak());
+            ui.end_row();
+            for (label, l, col) in rows {
+                ui.horizontal(|ui| {
+                    let (r, _) =
+                        ui.allocate_exact_size(egui::vec2(10.0, 10.0), egui::Sense::hover());
+                    ui.painter().circle_filled(r.center(), 4.5, col);
+                    ui.label(label);
+                });
+                let mut pct = l.k * 2;
+                ui.add(egui::Slider::new(&mut pct, 0..=400).suffix("%"));
+                l.k = pct / 2;
+                ui.add(egui::Slider::new(&mut l.offset, -255..=255));
+                ui.end_row();
+            }
+        });
 }
 
 /// Things a dialog needs from the app that aren't parameters.
@@ -226,161 +264,339 @@ pub struct DialogEnv {
     pub choose_pattern: bool,
 }
 
-/// Draw the parameter dialog body for `cmd`.
+/// Restore the parameters `cmd`'s dialog shows to their defaults.
+pub fn reset(cmd: Cmd, p: &mut OpParams, img_size: (usize, usize)) {
+    use Cmd::*;
+    let d = OpParams::default();
+    match cmd {
+        RgbTv => p.tv = d.tv,
+        RgbLinear => p.linear = d.linear,
+        Gamma => {
+            p.gamma = d.gamma;
+            p.gamma_rgb = d.gamma_rgb;
+        }
+        FillFluctuated => p.fluct = d.fluct,
+        GradientV | GradientH | GradientRadial => p.grad = d.grad,
+        Deformations => {
+            p.mirror = d.mirror;
+            p.distortion = d.distortion;
+            p.dsize = d.dsize;
+        }
+        Rotate => p.angle = d.angle,
+        Size => p.new_size = img_size,
+        New => p.new_size = d.new_size,
+        Paste | PasteFrom => {
+            p.paste_logic = d.paste_logic;
+            p.paste_level = d.paste_level;
+        }
+        _ => p.filter = d.filter,
+    }
+}
+
+/// The body of `cmd`'s parameter dialog.
 pub fn dialog_ui(ui: &mut egui::Ui, cmd: Cmd, p: &mut OpParams, env: &mut DialogEnv) {
     use Cmd::*;
+    let grid = |id: &str| egui::Grid::new(id).num_columns(2).spacing([12.0, 8.0]);
     match cmd {
         _ if matches!(
             cmd,
             Smoothing | SpotRemoving | Minimum | Maximum | HandDrawing | CleaningBackground
         ) || uses_tile_size(cmd) =>
         {
-            let (mx, my) = if uses_tile_size(cmd) {
+            let tiles = uses_tile_size(cmd);
+            let (mx, my) = if tiles {
                 let (a, b) = effects::filter_size_max_tiles(env.img_size.0, env.img_size.1);
                 (a.max(FilterSize::MIN), b.max(FilterSize::MIN))
             } else {
                 (FilterSize::MAX, FilterSize::MAX)
             };
-            ui.label("Filter size");
-            ui.add(egui::Slider::new(&mut p.filter.w, FilterSize::MIN..=mx).text("width"));
-            ui.add(egui::Slider::new(&mut p.filter.h, FilterSize::MIN..=my).text("height"));
-            ui.label(egui::RichText::new(format!("{}x{}", p.filter.w, p.filter.h)).strong());
+            widgets::section(ui, if tiles { "Tile size" } else { "Window" });
+            ui.horizontal(|ui| {
+                grid("fsize").show(ui, |ui| {
+                    ui.label("Width");
+                    let cw = ui
+                        .add(egui::Slider::new(&mut p.filter.w, FilterSize::MIN..=mx).suffix(" px"))
+                        .changed();
+                    ui.end_row();
+                    ui.label("Height");
+                    let ch = ui
+                        .add(egui::Slider::new(&mut p.filter.h, FilterSize::MIN..=my).suffix(" px"))
+                        .changed();
+                    ui.end_row();
+                    ui.label("");
+                    ui.checkbox(&mut p.square_filter, "Square");
+                    ui.end_row();
+                    if p.square_filter {
+                        if cw {
+                            p.filter.h = p.filter.w.min(my);
+                        } else if ch {
+                            p.filter.w = p.filter.h.min(mx);
+                        }
+                    }
+                });
+                if !tiles {
+                    ui.add_space(8.0);
+                    widgets::window_grid(ui, p.filter.w, p.filter.h);
+                }
+            });
         }
         RgbTv => {
-            ui.add(egui::Slider::new(&mut p.tv.0, -50..=50).text("Contrast"));
-            ui.add(egui::Slider::new(&mut p.tv.1, -255..=255).text("Brightness"));
-            ui.add(egui::Slider::new(&mut p.tv.2, -255..=255).text("Color"));
+            let (c, b, col) = p.tv;
+            let map = ColorMap::from_tv(50 - c, -b, -col);
+            ui.horizontal(|ui| {
+                widgets::curve_plot(
+                    ui,
+                    &[(&map.halftone.table(), ui.visuals().text_color())],
+                    110.0,
+                );
+                grid("tv").show(ui, |ui| {
+                    ui.label("Contrast");
+                    ui.add(egui::Slider::new(&mut p.tv.0, -50..=50));
+                    ui.end_row();
+                    ui.label("Brightness");
+                    ui.add(egui::Slider::new(&mut p.tv.1, -255..=255));
+                    ui.end_row();
+                    ui.label("Color");
+                    ui.add(egui::Slider::new(&mut p.tv.2, -255..=255));
+                    ui.end_row();
+                });
+            });
         }
         RgbLinear => {
-            egui::Grid::new("linear").num_columns(3).show(ui, |ui| {
-                linear_row(ui, "Halftone", &mut p.linear.halftone);
-                linear_row(ui, "Color", &mut p.linear.color);
-                linear_row(ui, "Red", &mut p.linear.red);
-                linear_row(ui, "Green", &mut p.linear.green);
-                linear_row(ui, "Blue", &mut p.linear.blue);
+            let m = p.linear;
+            let tabs = [
+                (m.halftone.table(), ui.visuals().text_color()),
+                (m.color.table(), Color32::from_rgb(230, 190, 40)),
+                (m.red.table(), Color32::from_rgb(230, 70, 70)),
+                (m.green.table(), Color32::from_rgb(70, 200, 90)),
+                (m.blue.table(), Color32::from_rgb(80, 130, 240)),
+            ];
+            let curves: Vec<(&[u8; 256], Color32)> = tabs.iter().map(|(t, c)| (t, *c)).collect();
+            ui.horizontal(|ui| {
+                widgets::curve_plot(ui, &curves, 150.0);
+                ui.vertical(|ui| {
+                    let [h, c, r, g, b] = [tabs[0].1, tabs[1].1, tabs[2].1, tabs[3].1, tabs[4].1];
+                    let l = &mut p.linear;
+                    linear_rows(
+                        ui,
+                        [
+                            ("Brightness", &mut l.halftone, h),
+                            ("Saturation", &mut l.color, c),
+                            ("Red", &mut l.red, r),
+                            ("Green", &mut l.green, g),
+                            ("Blue", &mut l.blue, b),
+                        ],
+                    );
+                });
             });
-            if ui.button("Restore").clicked() {
-                p.linear = ColorMap::default();
-            }
         }
         Gamma => {
-            ui.add(
-                egui::Slider::new(&mut p.gamma, 0.25..=4.0)
-                    .logarithmic(true)
-                    .fixed_decimals(2)
-                    .text("gamma"),
-            );
+            let lut = tune::gamma_lut(p.gamma);
+            let col = ui.visuals().text_color();
             ui.horizontal(|ui| {
-                ui.checkbox(&mut p.gamma_rgb[0], "R");
-                ui.checkbox(&mut p.gamma_rgb[1], "G");
-                ui.checkbox(&mut p.gamma_rgb[2], "B");
+                widgets::curve_plot(ui, &[(&lut, col)], 110.0);
+                ui.vertical(|ui| {
+                    widgets::section(ui, "Gamma");
+                    ui.add(
+                        egui::Slider::new(&mut p.gamma, 0.25..=4.0)
+                            .logarithmic(true)
+                            .fixed_decimals(2),
+                    );
+                    ui.horizontal(|ui| {
+                        for (i, (l, c)) in [
+                            ("R", (230, 70, 70)),
+                            ("G", (70, 200, 90)),
+                            ("B", (80, 130, 240)),
+                        ]
+                        .into_iter()
+                        .enumerate()
+                        {
+                            // Colored letters on checkboxes: readable on or off.
+                            let text = egui::RichText::new(l)
+                                .strong()
+                                .color(Color32::from_rgb(c.0, c.1, c.2));
+                            ui.checkbox(&mut p.gamma_rgb[i], text);
+                        }
+                        ui.label(egui::RichText::new("channels").weak());
+                    });
+                });
             });
         }
         FillFluctuated => {
-            ui.add(egui::Slider::new(&mut p.fluct.grain, 1..=16).text("Grain size"));
-            ui.add(egui::Slider::new(&mut p.fluct.depth, 1..=100).text("Depth"));
-            ui.horizontal(|ui| {
+            grid("fluct").show(ui, |ui| {
                 ui.label("Color");
-                rgb_edit(ui, &mut p.color);
+                widgets::swatch(ui, &mut p.color, 28.0, false);
+                ui.end_row();
+                ui.label("Grain size");
+                ui.add(egui::Slider::new(&mut p.fluct.grain, 1..=16).suffix(" px"));
+                ui.end_row();
+                ui.label("Depth");
+                ui.add(egui::Slider::new(&mut p.fluct.depth, 1..=100).suffix(" %"));
+                ui.end_row();
             });
         }
         GradientV | GradientH | GradientRadial => {
             let (a, b) = match cmd {
-                GradientV => ("bottom", "top"),
-                GradientH => ("left", "right"),
-                _ => ("center", "border"),
+                GradientV => ("Bottom", "Top"),
+                GradientH => ("Left", "Right"),
+                _ => ("Center", "Border"),
             };
-            ui.label("Border colors");
             ui.horizontal(|ui| {
-                rgb_edit(ui, &mut p.grad.0);
-                ui.label(a);
-                ui.add_space(12.0);
-                rgb_edit(ui, &mut p.grad.1);
-                ui.label(b);
+                ui.vertical(|ui| {
+                    ui.label(egui::RichText::new(a).weak());
+                    widgets::swatch(ui, &mut p.grad.0, 32.0, false);
+                });
+                ui.vertical(|ui| {
+                    ui.label("");
+                    widgets::gradient_bar(
+                        ui,
+                        p.grad.0,
+                        p.grad.1,
+                        cmd == GradientRadial,
+                        egui::vec2(170.0, 32.0),
+                    );
+                });
+                ui.vertical(|ui| {
+                    ui.label(egui::RichText::new(b).weak());
+                    widgets::swatch(ui, &mut p.grad.1, 32.0, false);
+                });
             });
+            if ui.small_button("⇄ Swap colors").clicked() {
+                p.grad = (p.grad.1, p.grad.0);
+            }
         }
         PatternTiled | PatternScaled | PatternFitted => {
+            widgets::section(ui, "Pattern");
             ui.horizontal(|ui| {
-                ui.label(if p.pattern_name.is_empty() {
-                    "No pattern chosen"
-                } else {
-                    &p.pattern_name
-                });
-                if ui.button("Choose…").clicked() {
+                match &p.pattern {
+                    Some(img) => ui.label(format!("{}  ({} × {})", p.pattern_name, img.w, img.h)),
+                    None => ui.label(egui::RichText::new("No pattern chosen").weak()),
+                };
+                if ui.button("Choose image…").clicked() {
                     env.choose_pattern = true;
                 }
             });
         }
         Deformations => {
-            egui::ComboBox::from_label("Type of mirror")
-                .selected_text(p.mirror.name())
-                .show_ui(ui, |ui| {
-                    for k in MirrorKind::ALL {
-                        ui.selectable_value(&mut p.mirror, k, k.name());
+            ui.horizontal_top(|ui| {
+                ui.vertical(|ui| {
+                    for (title, kinds) in [
+                        ("Mirrors", &MirrorKind::ALL[0..6]),
+                        ("Waves", &MirrorKind::ALL[6..9]),
+                        ("Whirlpools", &MirrorKind::ALL[9..11]),
+                    ] {
+                        widgets::section(ui, title);
+                        for k in kinds {
+                            ui.selectable_value(&mut p.mirror, *k, k.name());
+                        }
                     }
                 });
-            ui.add(egui::Slider::new(&mut p.distortion, 0..=DEFORM_PARAM_MAX).text("Distortion"));
-            ui.add_enabled(
-                p.mirror.uses_size(),
-                egui::Slider::new(&mut p.dsize, 0..=DEFORM_PARAM_MAX).text("Size"),
-            );
+                ui.add_space(8.0);
+                ui.vertical(|ui| {
+                    widgets::section(ui, "Strength");
+                    ui.add(
+                        egui::Slider::new(&mut p.distortion, 0..=DEFORM_PARAM_MAX)
+                            .text("distortion"),
+                    );
+                    ui.add_enabled(
+                        p.mirror.uses_size(),
+                        egui::Slider::new(&mut p.dsize, 0..=DEFORM_PARAM_MAX).text("waves"),
+                    );
+                });
+            });
         }
         Rotate => {
-            ui.add(
-                egui::DragValue::new(&mut p.angle)
-                    .range(-360.0..=360.0)
-                    .speed(1.0)
-                    .suffix("°"),
-            );
-            ui.label(egui::RichText::new("Counter-clockwise; negative = clockwise").weak());
+            ui.horizontal(|ui| {
+                widgets::angle_dial(ui, p.angle, 64.0);
+                ui.vertical(|ui| {
+                    ui.add(
+                        egui::Slider::new(&mut p.angle, -180.0..=180.0)
+                            .suffix("°")
+                            .fixed_decimals(1),
+                    );
+                    ui.horizontal(|ui| {
+                        for a in [-90.0, 90.0, 180.0] {
+                            if ui.small_button(format!("{a:+}°")).clicked() {
+                                p.angle = a;
+                            }
+                        }
+                    });
+                    ui.label(
+                        egui::RichText::new("Counter-clockwise; negative turns clockwise").weak(),
+                    );
+                });
+            });
         }
         Size | New => {
             let (w0, h0) = env.img_size;
             let (mut w, mut h) = p.new_size;
-            ui.horizontal(|ui| {
+            if cmd == New {
+                ui.horizontal(|ui| {
+                    for (pw, ph, label) in [
+                        (640, 480, "640×480"),
+                        (1024, 768, "1024×768"),
+                        (1920, 1080, "1920×1080"),
+                        (1000, 1000, "Square"),
+                    ] {
+                        if ui.selectable_label((w, h) == (pw, ph), label).clicked() {
+                            (w, h) = (pw, ph);
+                        }
+                    }
+                });
+            }
+            grid("size").show(ui, |ui| {
                 ui.label("Width");
                 let cw = ui
-                    .add(egui::DragValue::new(&mut w).range(1..=30000))
+                    .add(egui::DragValue::new(&mut w).range(1..=30000).suffix(" px"))
                     .changed();
+                ui.end_row();
                 ui.label("Height");
                 let ch = ui
-                    .add(egui::DragValue::new(&mut h).range(1..=30000))
+                    .add(egui::DragValue::new(&mut h).range(1..=30000).suffix(" px"))
                     .changed();
-                if cmd == Size && p.keep_aspect && w0 > 0 && h0 > 0 {
-                    if cw {
-                        h = ((w as f64 * h0 as f64 / w0 as f64).round() as usize).max(1);
-                    } else if ch {
-                        w = ((h as f64 * w0 as f64 / h0 as f64).round() as usize).max(1);
+                ui.end_row();
+                if cmd == Size {
+                    ui.label("");
+                    ui.checkbox(&mut p.keep_aspect, "Keep proportions");
+                    ui.end_row();
+                    if p.keep_aspect && w0 > 0 && h0 > 0 {
+                        if cw {
+                            h = ((w as f64 * h0 as f64 / w0 as f64).round() as usize).max(1);
+                        } else if ch {
+                            w = ((h as f64 * w0 as f64 / h0 as f64).round() as usize).max(1);
+                        }
                     }
                 }
             });
-            p.new_size = (w, h);
             if cmd == Size {
-                ui.checkbox(&mut p.keep_aspect, "Keep proportions");
-                if ui.button("Reset").clicked() {
-                    p.new_size = (w0, h0);
-                }
+                ui.horizontal(|ui| {
+                    for pct in [25, 50, 200, 400] {
+                        if ui.small_button(format!("{pct}%")).clicked() {
+                            w = (w0 * pct / 100).max(1);
+                            h = (h0 * pct / 100).max(1);
+                        }
+                    }
+                    ui.label(egui::RichText::new(format!("now {w0} × {h0}")).weak());
+                });
             }
+            p.new_size = (w, h);
             if w.saturating_mul(h) > crate::core::MAX_PIXELS {
-                ui.colored_label(Color32::from_rgb(220, 80, 60), "Image too large");
+                ui.colored_label(
+                    Color32::from_rgb(220, 80, 60),
+                    "Too large (100 megapixels at most)",
+                );
             }
         }
         Paste | PasteFrom => {
-            ui.label("Logic");
-            ui.radio_value(
-                &mut p.paste_logic,
-                PasteLogic::BlackTransparent,
-                "Black level transparent",
-            );
-            ui.radio_value(
-                &mut p.paste_logic,
-                PasteLogic::WhiteTransparent,
-                "White level transparent",
-            );
-            ui.radio_value(&mut p.paste_logic, PasteLogic::Replace, "Replace");
+            widgets::section(ui, "Transparent");
+            ui.horizontal(|ui| {
+                ui.selectable_value(&mut p.paste_logic, PasteLogic::Replace, "Nothing");
+                ui.selectable_value(&mut p.paste_logic, PasteLogic::BlackTransparent, "Black");
+                ui.selectable_value(&mut p.paste_logic, PasteLogic::WhiteTransparent, "White");
+            });
             ui.add_enabled(
                 p.paste_logic != PasteLogic::Replace,
-                egui::Slider::new(&mut p.paste_level, 0..=255).text("Transparency"),
+                egui::Slider::new(&mut p.paste_level, 0..=255).text("tolerance"),
             );
         }
         _ => {}
@@ -389,19 +605,34 @@ pub fn dialog_ui(ui: &mut egui::Ui, cmd: Cmd, p: &mut OpParams, env: &mut Dialog
 
 pub fn text_dialog_ui(ui: &mut egui::Ui, p: &mut OpParams, fonts: &[FontEntry]) {
     let name = fonts.get(p.font).map_or("?", |f| f.name.as_str());
-    egui::ComboBox::from_label("Font")
-        .selected_text(name)
-        .width(220.0)
-        .show_ui(ui, |ui| {
-            for (i, f) in fonts.iter().enumerate() {
-                ui.selectable_value(&mut p.font, i, &f.name);
-            }
+    egui::Grid::new("text")
+        .num_columns(2)
+        .spacing([12.0, 8.0])
+        .show(ui, |ui| {
+            ui.label("Font");
+            egui::ComboBox::from_id_salt("font")
+                .selected_text(name)
+                .width(240.0)
+                .show_ui(ui, |ui| {
+                    for (i, f) in fonts.iter().enumerate() {
+                        ui.selectable_value(&mut p.font, i, &f.name);
+                    }
+                });
+            ui.end_row();
+            ui.label("Size");
+            ui.add(
+                egui::Slider::new(&mut p.font_px, 8.0..=400.0)
+                    .logarithmic(true)
+                    .suffix(" px")
+                    .fixed_decimals(0),
+            );
+            ui.end_row();
         });
-    ui.add(egui::Slider::new(&mut p.font_px, 8.0..=400.0).text("Size (px)"));
     ui.add(
         egui::TextEdit::multiline(&mut p.text)
-            .desired_rows(2)
-            .desired_width(320.0),
+            .desired_rows(3)
+            .desired_width(340.0)
+            .hint_text("Text"),
     );
 }
 

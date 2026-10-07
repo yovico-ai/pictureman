@@ -17,6 +17,7 @@ mod marquee;
 mod platform;
 mod settings;
 mod tools;
+mod widgets;
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -226,6 +227,7 @@ impl App {
         let mut params = OpParams::default();
         let loaded = settings::load(&mut tools, &mut params);
         cc.egui_ctx.set_theme(tools.theme);
+        widgets::apply_style(&cc.egui_ctx);
         let brush_effect = Pending {
             cmd: Cmd::FillPlain,
             params: params.clone(),
@@ -1461,15 +1463,11 @@ impl App {
                     ui.label("Paints with");
                     let name = if fx.cmd == Cmd::Move { "Clone" } else { fx.cmd.title() };
                     ui.label(RichText::new(name).strong().color(ui.visuals().hyperlink_color));
-                    if fx.cmd == Cmd::FillPlain {
-                        let [r, g, b] = t.color;
-                        let mut c = Color32::from_rgb(r, g, b);
-                        if egui::color_picker::color_edit_button_srgba(ui, &mut c, egui::color_picker::Alpha::Opaque).changed() {
-                            t.color = [c.r(), c.g(), c.b()];
+                    if fx.cmd == Cmd::FillPlain
+                        && widgets::swatch(ui, &mut t.color, 20.0, false).changed() {
                             self.brush_effect.params.color = t.color;
                             self.effect_gen += 1;
                         }
-                    }
                     if ui.small_button("Color").on_hover_text("Paint with the current color").clicked() {
                         cmd = Some(Cmd::FillPlain);
                     }
@@ -1489,8 +1487,8 @@ impl App {
                 }
                 Tool::Eyedropper => {
                     let [r, g, b] = t.color;
-                    let (resp, p) = ui.allocate_painter(vec2(28.0, 16.0), egui::Sense::hover());
-                    p.rect_filled(resp.rect, 3.0, Color32::from_rgb(r, g, b));
+                    let (resp, p) = ui.allocate_painter(vec2(20.0, 20.0), egui::Sense::hover());
+                    p.rect_filled(resp.rect, 5.0, Color32::from_rgb(r, g, b));
                     ui.label(format!("{r} {g} {b}"));
                 }
                 _ => {
@@ -1603,37 +1601,60 @@ impl App {
                 let previewing = apply::has_preview(cmd) && !brush;
                 let busy = self.preview.computing.is_some();
                 let mut open = true;
-                egui::Window::new(cmd.title())
-                    .id(egui::Id::new("op-dialog"))
+                let window_frame = egui::Frame::window(&ctx.global_style()).inner_margin(16);
+                egui::Window::new(RichText::new(cmd.title()).strong())
+                    .id(egui::Id::new(("op-dialog", cmd)))
                     .open(&mut open)
                     .collapsible(false)
                     .resizable(false)
-                    .anchor(egui::Align2::RIGHT_TOP, vec2(-16.0, 80.0))
+                    .frame(window_frame)
+                    .anchor(egui::Align2::RIGHT_TOP, vec2(-16.0, 84.0))
                     .show(ctx, |ui| {
+                        let about = apply::description(cmd);
+                        if !about.is_empty() {
+                            ui.label(RichText::new(about).weak());
+                            ui.add_space(4.0);
+                        }
                         apply::dialog_ui(ui, cmd, &mut params, &mut env);
-                        ui.add_space(8.0);
-                        if previewing {
-                            ui.horizontal(|ui| {
+                        ui.add_space(10.0);
+                        ui.separator();
+                        ui.horizontal(|ui| {
+                            if ui
+                                .button("Reset")
+                                .on_hover_text("Back to the defaults")
+                                .clicked()
+                            {
+                                apply::reset(cmd, &mut params, img_size);
+                            }
+                            if previewing {
                                 ui.checkbox(&mut self.show_preview, "Preview");
                                 if busy && self.show_preview {
                                     ui.spinner();
                                 }
-                            });
-                        }
-                        if brush {
-                            ui.label(RichText::new("OK sets the brush's effect").weak());
-                        }
-                        ui.horizontal(|ui| {
-                            if ui.button("OK").clicked()
-                                || ui.input(|i| i.key_pressed(egui::Key::Enter))
-                            {
-                                result = Some(true);
                             }
-                            if ui.button("Cancel").clicked()
-                                || ui.input(|i| i.key_pressed(egui::Key::Escape))
-                            {
-                                result = Some(false);
+                            if brush {
+                                ui.label(RichText::new("sets the brush's effect").weak());
                             }
+                            ui.with_layout(
+                                egui::Layout::right_to_left(egui::Align::Center),
+                                |ui| {
+                                    let apply_label = if brush { "Use for brush" } else { "Apply" };
+                                    let primary = egui::Button::new(
+                                        RichText::new(apply_label).strong().color(Color32::WHITE),
+                                    )
+                                    .fill(widgets::ACCENT);
+                                    if ui.add(primary).clicked()
+                                        || ui.input(|i| i.key_pressed(egui::Key::Enter))
+                                    {
+                                        result = Some(true);
+                                    }
+                                    if ui.button("Cancel").clicked()
+                                        || ui.input(|i| i.key_pressed(egui::Key::Escape))
+                                    {
+                                        result = Some(false);
+                                    }
+                                },
+                            );
                         });
                     });
                 if !open {

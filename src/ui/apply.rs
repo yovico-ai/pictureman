@@ -402,6 +402,31 @@ pub fn is_fill(cmd: Cmd) -> bool {
     )
 }
 
+/// When painting, can the operation be computed once for the whole image
+/// at the start of the session? True when its result at a pixel doesn't
+/// depend on the brush square: local filters and effects, colour tuning and
+/// source-independent fills. The others (statistics, gradients, patches and
+/// geometry relative to the square) are computed per dab on the square.
+pub fn pen_once(cmd: Cmd) -> bool {
+    use Cmd::*;
+    !matches!(
+        cmd,
+        Expand
+            | Equalization
+            | GradientV
+            | GradientH
+            | GradientRadial
+            | PatchFull
+            | PatchH
+            | PatchV
+            | Deformations
+            | Rubber
+            | FlipH
+            | FlipV
+            | Move
+    )
+}
+
 /// Commands that produce a movable fragment when used with a selected area.
 pub fn is_fragment_op(cmd: Cmd) -> bool {
     matches!(

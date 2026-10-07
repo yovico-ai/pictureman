@@ -52,6 +52,11 @@ struct PenSession {
     /// Image when painting started: filters read from it, so repeated dabs
     /// don't compound; right-drag restores it.
     backup: Image,
+    /// The operation applied to `backup` once for the whole image (see
+    /// `apply::pen_once`); dabs reveal it.
+    processed: Option<Image>,
+    preparing: Option<Receiver<Image>>,
+    undo_pushed: bool,
     stroke: Option<sel::Stroke>,
     last: Option<egui::Pos2>,
     erase: bool,
@@ -562,6 +567,7 @@ impl App {
                     return;
                 }
                 self.state = State::Pen(pending, None);
+                self.pen_session();
             }
             Area::Whole => {
                 let chosen = Chosen {
@@ -954,24 +960,60 @@ impl App {
         }
     }
 
+    /// Start a painting session: remember the image and, for operations
+    /// that allow it, compute their result once (in the background).
     fn pen_session(&mut self) {
-        let backup = self.tools.backup;
-        let (State::Pen(_, sess), Some(d)) = (&mut self.state, self.docs.get_mut(self.active))
+        let (State::Pen(pending, sess), Some(d)) = (&mut self.state, self.docs.get(self.active))
         else {
             return;
         };
-        if sess.is_none() {
-            if backup {
-                d.push_undo();
+        if sess.is_some() {
+            return;
+        }
+        let backup = d.img.clone();
+        let preparing = (apply::pen_once(pending.cmd)).then(|| {
+            let (cmd, params, src) = (pending.cmd, pending.params.clone(), backup.clone());
+            let (circle, mut rng) = (self.tools.brush == tools::Brush::Circle, self.rng.clone());
+            platform::spawn(move || {
+                let full = Mask::full(src.w, src.h);
+                let mut ctx = Ctx {
+                    area: Area::Pen,
+                    mask: &full,
+                    circle_pen: circle,
+                    rng: &mut rng,
+                    backup: Some(&src),
+                };
+                apply::apply(cmd, &params, &src, src.rect(), &mut ctx)
+            })
+        });
+        *sess = Some(PenSession {
+            backup,
+            processed: None,
+            preparing,
+            undo_pushed: false,
+            stroke: None,
+            last: None,
+            erase: false,
+            clone_ref: None,
+            clone_offset: None,
+        });
+    }
+
+    /// Pick up the precomputed result when it is ready.
+    fn poll_pen(&mut self, ctx: &egui::Context) {
+        if let State::Pen(_, Some(s)) = &mut self.state
+            && let Some(rx) = &s.preparing
+        {
+            match rx.try_recv() {
+                Ok(img) => {
+                    s.processed = Some(img);
+                    s.preparing = None;
+                }
+                Err(mpsc::TryRecvError::Empty) => {
+                    ctx.request_repaint_after(std::time::Duration::from_millis(30))
+                }
+                Err(mpsc::TryRecvError::Disconnected) => s.preparing = None,
             }
-            *sess = Some(PenSession {
-                backup: d.img.clone(),
-                stroke: None,
-                last: None,
-                erase: false,
-                clone_ref: None,
-                clone_offset: None,
-            });
         }
     }
 
@@ -986,6 +1028,7 @@ impl App {
     }
 
     fn pen_dab(&mut self, p: egui::Pos2) {
+        let backup_on = self.tools.backup;
         let (State::Pen(pending, Some(s)), Some(d)) =
             (&mut self.state, self.docs.get_mut(self.active))
         else {
@@ -995,6 +1038,11 @@ impl App {
             return;
         };
         let cmd = pending.cmd;
+        let once = apply::pen_once(cmd);
+        if once && !s.erase && s.processed.is_none() {
+            // Still preparing; the status bar says so.
+            return;
+        }
         let size = self.tools.pen_size as usize;
         let kind = if self.tools.brush == tools::Brush::Circle {
             sel::BrushKind::Circle
@@ -1013,12 +1061,17 @@ impl App {
             };
             s.clone_offset = Some(((r.x - p.x).round() as i64, (r.y - p.y).round() as i64));
         }
+        if !s.undo_pushed {
+            s.undo_pushed = true;
+            if backup_on {
+                d.push_undo();
+            }
+        }
         // Dabs along the drag (the original only dabbed at mouse-move events,
         // which leaves gaps on fast strokes).
         let from = s.last.unwrap_or(p);
         let spacing = (size as f32 / 2.0).max(1.0);
         let n = ((from.distance(p) / spacing).ceil() as usize).max(1);
-        let full = Mask::full(d.img.w, d.img.h);
         for i in 1..=n {
             let c = if s.last.is_none() {
                 p
@@ -1026,44 +1079,83 @@ impl App {
                 from.lerp(p, i as f32 / n as f32)
             };
             let ci = (c.x.floor() as i32, c.y.floor() as i32);
-            if s.erase {
-                sel::erase_dab(&mut d.img, &s.backup, ci, &pen, stroke, &mut self.rng);
-            } else {
-                let r = sel::dab_rect(ci, size, d.img.w, d.img.h);
-                if !r.is_empty() {
-                    let fill_copy = apply::is_fill(cmd).then(|| d.img.clone());
-                    let source = fill_copy.as_ref().unwrap_or(&s.backup);
-                    let processed = if cmd == Cmd::Move {
-                        let (dx, dy) = s.clone_offset.unwrap_or((0, 0));
-                        transform::clone_offset(source, r, dx, dy, pending.params.color)
-                    } else {
-                        let mut ctx = Ctx {
-                            area: Area::Pen,
-                            mask: &full,
-                            circle_pen: kind == sel::BrushKind::Circle,
-                            rng: &mut self.rng,
-                            backup: Some(&s.backup),
-                        };
-                        apply::apply(cmd, &pending.params, source, r, &mut ctx)
-                    };
-                    sel::paint_dab(
-                        &mut d.img,
-                        &processed,
-                        source,
-                        ci,
-                        &pen,
-                        stroke,
-                        &mut self.rng,
-                    );
-                }
+            // Everything happens on the dab's square only.
+            let r = sel::dab_rect(ci, size, d.img.w, d.img.h);
+            if r.is_empty() {
+                stroke.advance();
+                continue;
             }
+            let local = (ci.0 - r.x as i32, ci.1 - r.y as i32);
+            let mut out = d.img.crop(r);
+            if s.erase {
+                let cur = out.clone();
+                sel::paint_dab(
+                    &mut out,
+                    &s.backup.crop(r),
+                    &cur,
+                    local,
+                    &pen,
+                    stroke,
+                    &mut self.rng,
+                );
+            } else {
+                // Fills accumulate on the current image, the rest reads the
+                // image as it was when painting started.
+                let source = if apply::is_fill(cmd) {
+                    out.clone()
+                } else {
+                    s.backup.crop(r)
+                };
+                let processed = if cmd == Cmd::Move {
+                    let (dx, dy) = s.clone_offset.unwrap_or((0, 0));
+                    let bg = pending.params.color;
+                    let mut img = Image::new(r.w, r.h, bg);
+                    for y in 0..r.h {
+                        for x in 0..r.w {
+                            let (sx, sy) = ((r.x + x) as i64 + dx, (r.y + y) as i64 + dy);
+                            if sx >= 0
+                                && sy >= 0
+                                && (sx as usize) < s.backup.w
+                                && (sy as usize) < s.backup.h
+                            {
+                                img.set(x, y, s.backup.get(sx as usize, sy as usize));
+                            }
+                        }
+                    }
+                    img
+                } else if let Some(pre) = &s.processed {
+                    pre.crop(r)
+                } else {
+                    let full = Mask::full(r.w, r.h);
+                    let mut ctx = Ctx {
+                        area: Area::Pen,
+                        mask: &full,
+                        circle_pen: kind == sel::BrushKind::Circle,
+                        rng: &mut self.rng,
+                        backup: Some(&s.backup),
+                    };
+                    apply::apply(cmd, &pending.params, &source, source.rect(), &mut ctx)
+                };
+                sel::paint_dab(
+                    &mut out,
+                    &processed,
+                    &source,
+                    local,
+                    &pen,
+                    stroke,
+                    &mut self.rng,
+                );
+            }
+            for y in 0..r.h {
+                d.img.row_mut(r.y + y)[r.x..r.x + r.w].copy_from_slice(out.row(y));
+            }
+            d.touch_rect(r);
             stroke.advance();
             if s.last.is_none() {
                 break;
             }
         }
         s.last = Some(p);
-        d.touch();
     }
 
     fn menu_bar(&mut self, ui: &mut egui::Ui) {
@@ -1254,6 +1346,9 @@ impl App {
                     }
                 )),
                 State::Pen(p, _) if p.cmd == Cmd::Move => Some("Clone: Shift-click the reference point, then paint".into()),
+                State::Pen(p, Some(sess)) if sess.preparing.is_some() => {
+                    Some(format!("{}: preparing…", p.cmd.title()))
+                }
                 State::Pen(p, _) => Some(format!("{}: paint with the pen (right button restores)", p.cmd.title())),
                 State::Rubber { .. } => Some("Rubber: drag a point to its new place, then double-click".into()),
                 State::Place(_) => Some("Drag or resize the fragment (Ctrl = proportional, Shift-click = original size); double-click to accept".into()),
@@ -1602,6 +1697,7 @@ impl eframe::App for App {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         let ctx = ui.ctx().clone();
         self.poll_job(&ctx);
+        self.poll_pen(&ctx);
         // Changing the area type ends area entry or painting; a pending
         // command restarts with the new type.
         if self.tools.area != self.last_area {

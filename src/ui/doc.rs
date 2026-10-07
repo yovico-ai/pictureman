@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use eframe::egui::{self, ColorImage, TextureHandle, TextureOptions};
 
-use crate::core::Image;
+use crate::core::{Image, Rect};
 
 const UNDO_DEPTH: usize = 16;
 
@@ -21,6 +21,9 @@ pub struct Doc {
     pub zoom: f32,
     tex: Option<TextureHandle>,
     stale: bool,
+    /// Part of the image changed since the last upload (painting), so only
+    /// that rectangle is sent to the GPU.
+    dirty: Option<Rect>,
 }
 
 impl Doc {
@@ -36,6 +39,7 @@ impl Doc {
             zoom: 1.0,
             tex: None,
             stale: true,
+            dirty: None,
         }
     }
 
@@ -74,6 +78,24 @@ impl Doc {
         self.stale = true;
     }
 
+    /// Only `r` changed.
+    pub fn touch_rect(&mut self, r: Rect) {
+        self.modified = true;
+        self.dirty = Some(match self.dirty {
+            None => r,
+            Some(d) => {
+                let (x0, y0) = (d.x.min(r.x), d.y.min(r.y));
+                let (x1, y1) = ((d.x + d.w).max(r.x + r.w), (d.y + d.h).max(r.y + r.h));
+                Rect {
+                    x: x0,
+                    y: y0,
+                    w: x1 - x0,
+                    h: y1 - y0,
+                }
+            }
+        });
+    }
+
     pub fn texture(&mut self, ctx: &egui::Context) -> &TextureHandle {
         let opts = if self.zoom >= 1.0 {
             TextureOptions::NEAREST
@@ -88,6 +110,19 @@ impl Doc {
                 None => self.tex = Some(ctx.load_texture(format!("doc{}", self.id), ci, opts)),
             }
             self.stale = false;
+            self.dirty = None;
+        } else if let (Some(r), Some(t)) = (self.dirty.take(), &mut self.tex) {
+            let r = Rect {
+                w: r.w.min(self.img.w.saturating_sub(r.x)),
+                h: r.h.min(self.img.h.saturating_sub(r.y)),
+                ..r
+            };
+            if !r.is_empty() {
+                let raw: Vec<u8> = (r.y..r.y + r.h)
+                    .flat_map(|y| self.img.row(y)[r.x..r.x + r.w].iter().flatten().copied())
+                    .collect();
+                t.set_partial([r.x, r.y], ColorImage::from_rgb([r.w, r.h], &raw), opts);
+            }
         }
         self.tex.as_ref().unwrap()
     }

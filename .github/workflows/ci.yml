@@ -14,7 +14,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      # The project's minimum Rust (Cargo.toml rust-version), so lints don't
+      # change underneath us.
+      - uses: dtolnay/rust-toolchain@1.94
         with:
           components: clippy
       - uses: Swatinem/rust-cache@v2

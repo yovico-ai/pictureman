@@ -828,11 +828,7 @@ pub fn paint_dab(
                                 ((row[i][c] as i32 * t + src[c] as i32 * (64 - t)) >> 6) as u8;
                         }
                     }
-                    BrushKind::FadingSpray => {
-                        if rng.rand() % 64 > t {
-                            row[i] = src;
-                        }
-                    }
+                    BrushKind::FadingSpray if rng.rand() % 64 > t => row[i] = src,
                     _ => {}
                 }
             }

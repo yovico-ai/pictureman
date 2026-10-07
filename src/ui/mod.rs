@@ -473,7 +473,9 @@ impl App {
                                 h,
                                 px: im
                                     .bytes
-                                    .chunks_exact(4)
+                                    .as_chunks::<4>()
+                                    .0
+                                    .iter()
                                     .take(w * h)
                                     .map(|c| [c[0], c[1], c[2]])
                                     .collect(),

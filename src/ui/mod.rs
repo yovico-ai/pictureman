@@ -1,13 +1,19 @@
-//! The Picture Man window: menu bar, toolbox, documents and dialogs, and the
-//! interaction state machine (outline an area → double-click inside or
-//! outside → process; paint with the pen; drag the Rubber grid; place a
-//! transformed or pasted fragment).
+//! The Picture Man window: menus, toolbox, tool options, tabs, canvas,
+//! dialogs and status bar.
+//!
+//! Interaction model: pick a selection tool and draw — the selection stays
+//! until cleared (Shift adds, Alt subtracts, drag inside to move); every
+//! command applies to the selection, or to the whole image when there is
+//! none. The brush paints with an effect: while it is the current tool,
+//! choosing an Adjust, Fill or Filter command makes it the brush's effect
+//! (the original's "paint with any operation").
 
 mod apply;
 mod assets;
 mod canvas;
 mod commands;
 mod doc;
+mod marquee;
 mod platform;
 mod settings;
 mod tools;
@@ -20,20 +26,21 @@ use eframe::egui::{
     self, Color32, ColorImage, RichText, TextureHandle, TextureOptions, pos2, vec2,
 };
 
-use self::apply::{Ctx, DialogEnv, OpParams};
+use self::apply::{Ctx, DialogEnv, OpParams, Scope};
 pub use self::assets::Assets as AppAssets;
 use self::assets::Assets;
-use self::canvas::{Event, Mode, Overlay, Selecting, Shape};
+use self::canvas::{Event, Interaction, Mode, View};
 use self::commands::{Cmd, MenuItem};
 use self::doc::Doc;
-use self::tools::{Area, Tools};
+use self::marquee::{Combine, Selection};
+use self::tools::{Tool, ToolboxAction, Tools};
 use crate::core::{Image, MAX_PIXELS, Mask, MsRand, Rect};
 use crate::formats::{self, Format};
 use crate::ops::transform::{self, Fragment};
-use crate::selection::{self as sel, Weights};
+use crate::selection::{self as sel, AreaKind};
 use crate::text::FontEntry;
 
-/// Zoom steps of the View menu: 1:8 … 8:1.
+/// The View menu's fixed zoom steps (1:8 … 8:1), as in the original.
 const ZOOMS: [f32; 9] = [0.125, 1.0 / 6.0, 0.25, 0.5, 1.0, 2.0, 4.0, 6.0, 8.0];
 
 #[derive(Clone)]
@@ -42,21 +49,28 @@ struct Pending {
     params: OpParams,
 }
 
-/// The chosen part of the image: binary selection plus edge weights.
+/// What an operation works on: the selected pixels, and the selection (for
+/// the soft-edge weights, computed off the UI thread) unless it is the
+/// whole image.
+#[derive(Clone)]
 struct Chosen {
     selected: Mask,
-    weights: Option<Weights>,
+    selection: Option<(Selection, sel::Edge)>,
+    scope: Scope,
 }
 
-struct PenSession {
-    /// Image when painting started: filters read from it, so repeated dabs
-    /// don't compound; right-drag restores it.
+/// Painting with the brush. Operations that allow it are computed once for
+/// the whole image when the session starts (see `apply::pen_once`); dabs
+/// reveal that result.
+struct BrushSession {
+    doc: u64,
+    version: u64,
+    effect: u64,
+    /// The image when the session started: filters read from it, so strokes
+    /// don't compound; the right button restores it.
     backup: Image,
-    /// The operation applied to `backup` once for the whole image (see
-    /// `apply::pen_once`); dabs reveal it.
     processed: Option<Image>,
     preparing: Option<Receiver<Image>>,
-    undo_pushed: bool,
     stroke: Option<sel::Stroke>,
     last: Option<egui::Pos2>,
     erase: bool,
@@ -72,11 +86,8 @@ struct Placing {
 
 enum State {
     Idle,
-    Select(Pending),
-    Pen(Pending, Option<PenSession>),
     Rubber {
         pending: Pending,
-        chosen: Chosen,
         roi: Rect,
         from: Option<egui::Pos2>,
         to: Option<egui::Pos2>,
@@ -86,7 +97,7 @@ enum State {
 
 enum Dialog {
     Op(Cmd, OpParams),
-    Text(egui::Pos2, OpParams),
+    Text(egui::Pos2, Combine, OpParams),
     WandOptions,
     /// Save As in the browser: the download's file name.
     #[cfg(target_arch = "wasm32")]
@@ -100,6 +111,18 @@ struct Job {
     rx: Receiver<Result<(Image, MsRand), String>>,
 }
 
+/// Live preview of the open dialog's operation, shown on the canvas.
+#[derive(Default)]
+struct Preview {
+    /// Parameters of the result in `img`.
+    key: String,
+    img: Option<Image>,
+    tex: Option<TextureHandle>,
+    computing: Option<(String, Receiver<Image>)>,
+    doc: u64,
+    version: u64,
+}
+
 pub struct App {
     egui: egui::Context,
     assets: Assets,
@@ -111,27 +134,26 @@ pub struct App {
     show_toolbox: bool,
     state: State,
     dialog: Option<Dialog>,
-    sel: Selecting,
-    /// Mask of the current area for mask-based areas (magic wand).
-    area_mask: Option<Mask>,
-    /// Outline textures (the four TILE phases) for mask-based areas.
-    ants: Option<[TextureHandle; 4]>,
-    text_ants: Option<[TextureHandle; 4]>,
+    interaction: Interaction,
     job: Option<Job>,
     rng: MsRand,
     fonts: Option<Vec<FontEntry>>,
-    preview: Option<(TextureHandle, Image)>,
+    preview: Preview,
+    show_preview: bool,
     hover: Option<(usize, usize)>,
     message: Option<String>,
     about: bool,
     splash_until: f64,
     recent: Vec<PathBuf>,
-    zoom_accum: f32,
     files: platform::Files,
     /// Paste-from parameters while the file picker is open.
     paste_params: Option<OpParams>,
-    last_area: Area,
-    zoom_latched: bool,
+    brush_effect: Pending,
+    effect_gen: u64,
+    brush: Option<BrushSession>,
+    /// A menu or popup was open when the frame started (Esc closes it
+    /// before the canvas sees the key).
+    popup_was_open: bool,
     /// Last settings text written, to save only on change.
     saved_settings: String,
 }
@@ -143,42 +165,6 @@ fn edge(e: tools::Edge) -> sel::Edge {
         tools::Edge::Medium => sel::Edge::SmoothMedium,
         tools::Edge::High => sel::Edge::SmoothHigh,
     }
-}
-
-fn area_kind(a: Area) -> sel::AreaKind {
-    match a {
-        Area::Whole => sel::AreaKind::Whole,
-        Area::Rect => sel::AreaKind::Rect,
-        Area::Ellipse => sel::AreaKind::Ellipse,
-        Area::Polygon => sel::AreaKind::Polygon,
-        Area::Text => sel::AreaKind::Text,
-        Area::MagicWand => sel::AreaKind::MagicWand,
-        Area::Freehand => sel::AreaKind::Freehand,
-        Area::Pen => sel::AreaKind::Pen,
-    }
-}
-
-/// A mask's outline in the original's moving TILE pattern, one texture per
-/// phase.
-fn ants_textures(ctx: &egui::Context, name: &str, mask: &Mask) -> [TextureHandle; 4] {
-    let outline = sel::outline(mask);
-    [0, 1, 2, 3].map(|phase| {
-        let mut rgba = vec![0u8; mask.w * mask.h * 4];
-        for y in 0..mask.h {
-            for x in 0..mask.w {
-                if outline.get(x, y) != 0 {
-                    let v = if !canvas::tile_black(x as i64, y as i64, phase) {
-                        255
-                    } else {
-                        0
-                    };
-                    rgba[(y * mask.w + x) * 4..][..4].copy_from_slice(&[v, v, v, 255]);
-                }
-            }
-        }
-        let ci = ColorImage::from_rgba_unmultiplied([mask.w, mask.h], &rgba);
-        ctx.load_texture(format!("{name}{phase}"), ci, TextureOptions::NEAREST)
-    })
 }
 
 fn fragment_texture(ctx: &egui::Context, f: &Fragment) -> TextureHandle {
@@ -196,11 +182,53 @@ fn fragment_texture(ctx: &egui::Context, f: &Fragment) -> TextureHandle {
     )
 }
 
+fn image_texture(ctx: &egui::Context, name: &str, img: &Image) -> TextureHandle {
+    let raw: Vec<u8> = img.px.iter().flatten().copied().collect();
+    ctx.load_texture(
+        name,
+        ColorImage::from_rgb([img.w, img.h], &raw),
+        TextureOptions::NEAREST,
+    )
+}
+
+/// Run `cmd` on `src` and commit it through the selection's soft edge.
+fn compute(
+    cmd: Cmd,
+    params: &OpParams,
+    src: &Image,
+    chosen: &Chosen,
+    backup: Option<&Image>,
+    rng: &mut MsRand,
+) -> Image {
+    let roi = chosen.selected.bounds();
+    let processed = {
+        let mut ctx = Ctx {
+            scope: chosen.scope,
+            mask: &chosen.selected,
+            rng,
+            backup,
+        };
+        apply::apply(cmd, params, src, roi, &mut ctx)
+    };
+    match &chosen.selection {
+        Some((s, e)) => {
+            let mut out = src.clone();
+            sel::commit(&mut out, &processed, &s.weights(*e));
+            out
+        }
+        None => processed,
+    }
+}
+
 impl App {
     pub fn new(cc: &eframe::CreationContext<'_>, files: Vec<PathBuf>) -> Self {
         let mut tools = Tools::default();
         let mut params = OpParams::default();
         let loaded = settings::load(&mut tools, &mut params);
+        let brush_effect = Pending {
+            cmd: Cmd::FillPlain,
+            params: params.clone(),
+        };
         let mut app = App {
             egui: cc.egui_ctx.clone(),
             assets: Assets::load(&cc.egui_ctx),
@@ -212,28 +240,26 @@ impl App {
             show_toolbox: loaded.show_toolbox,
             state: State::Idle,
             dialog: None,
-            sel: Selecting::default(),
-            area_mask: None,
-            ants: None,
-            text_ants: None,
+            interaction: Interaction::default(),
             job: None,
             rng: MsRand::default(),
             fonts: None,
-            preview: None,
+            preview: Preview::default(),
+            show_preview: true,
             hover: None,
             message: None,
             about: false,
             splash_until: 2.5,
             recent: loaded.recent,
-            zoom_accum: 0.0,
             files: platform::Files::default(),
             paste_params: None,
-            last_area: Area::Whole,
-            zoom_latched: false,
+            brush_effect,
+            effect_gen: 0,
+            brush: None,
+            popup_was_open: false,
             saved_settings: String::new(),
         };
         app.saved_settings = app.settings_text();
-        app.last_area = app.tools.area;
         for f in files {
             app.open_path(f);
         }
@@ -244,12 +270,29 @@ impl App {
         self.docs.get_mut(self.active)
     }
 
+    fn selection(&self) -> Option<&Selection> {
+        self.docs.get(self.active)?.selection.as_ref()
+    }
+
+    fn set_selection(&mut self, s: Option<Selection>) {
+        if let Some(d) = self.doc() {
+            d.selection = s;
+        }
+    }
+
     fn add_doc(&mut self, name: String, path: Option<PathBuf>, img: Image) {
         let id = self.next_id;
         self.next_id += 1;
         self.docs.push(Doc::new(id, name, path, img));
-        self.active = self.docs.len() - 1;
-        self.reset_area();
+        self.switch_to(self.docs.len() - 1);
+    }
+
+    fn switch_to(&mut self, i: usize) {
+        self.active = i;
+        self.state = State::Idle;
+        self.interaction.clear();
+        self.dialog = None;
+        self.preview = Preview::default();
     }
 
     fn open_path(&mut self, path: PathBuf) {
@@ -285,10 +328,6 @@ impl App {
             }
             self.saved_settings = text;
         }
-    }
-
-    fn open_dialog(&mut self) {
-        self.files.request(platform::Purpose::Open, "Open Source");
     }
 
     /// Files arrive from the file picker (on the desktop at once, in the
@@ -374,7 +413,7 @@ impl App {
             (Some(p), false) => Some(p.clone()),
             _ => {
                 let mut d = rfd::FileDialog::new()
-                    .set_title("Select Target")
+                    .set_title("Save As")
                     .set_file_name(&doc.name);
                 for f in Format::ALL {
                     d = d.add_filter(f.description(), f.extensions());
@@ -400,30 +439,15 @@ impl App {
         }
     }
 
-    /// Forget the outlined area (unless "Preserve mask" keeps it).
-    fn reset_area(&mut self) {
-        self.state = State::Idle;
-        self.sel.clear();
-        self.area_mask = None;
-        self.ants = None;
-        self.text_ants = None;
-    }
-
-    fn cancel(&mut self) {
-        if let State::Pen(_, Some(_)) = self.state {
-            // Leaving painting mode ends the session; the backup stays in Undo.
-        }
-        self.reset_area();
-    }
-
-    /// A menu command was chosen.
+    /// A menu command or shortcut.
     fn invoke(&mut self, cmd: Cmd, ctx: &egui::Context) {
         if cmd.needs_image() && (self.docs.is_empty() || self.job.is_some()) {
             return;
         }
+        self.message = None;
         match cmd {
             Cmd::New | Cmd::Size | Cmd::Paste | Cmd::PasteFrom => self.open_op_dialog(cmd),
-            Cmd::Open => self.open_dialog(),
+            Cmd::Open => self.files.request(platform::Purpose::Open, "Open"),
             Cmd::Save => self.save(false),
             Cmd::SaveAs => self.save(true),
             Cmd::Reload => {
@@ -434,34 +458,74 @@ impl App {
                     d.set_image(img);
                     d.modified = false;
                 }
-                self.reset_area();
+                self.state = State::Idle;
             }
             Cmd::Exit => ctx.send_viewport_cmd(egui::ViewportCommand::Close),
             Cmd::Undo => {
-                self.reset_area();
+                self.state = State::Idle;
                 if let Some(d) = self.doc() {
                     d.undo();
                 }
             }
-            Cmd::Zoom(z) => {
+            Cmd::Redo => {
+                self.state = State::Idle;
                 if let Some(d) = self.doc() {
-                    d.zoom = ZOOMS[z as usize];
-                    d.mark_stale();
+                    d.redo();
+                }
+            }
+            Cmd::SelectAll => {
+                let s = self
+                    .docs
+                    .get(self.active)
+                    .and_then(|d| Selection::all(d.img.w, d.img.h));
+                self.set_selection(s);
+            }
+            Cmd::SelectNone => self.set_selection(None),
+            Cmd::InvertSelection => {
+                let s = match self.selection() {
+                    Some(s) => s.inverted(),
+                    None => self
+                        .docs
+                        .get(self.active)
+                        .and_then(|d| Selection::all(d.img.w, d.img.h)),
+                };
+                self.set_selection(s);
+            }
+            Cmd::Zoom(z) => self.set_zoom(ZOOMS[z as usize]),
+            Cmd::ZoomIn => self.zoom_by(1.25),
+            Cmd::ZoomOut => self.zoom_by(0.8),
+            Cmd::ZoomFit => {
+                if let Some(d) = self.doc() {
+                    d.fit_pending = true;
                 }
             }
             Cmd::Toolbox => self.show_toolbox = !self.show_toolbox,
             Cmd::AnimateSelection => self.tools.animate = !self.tools.animate,
             Cmd::CreateBackup => self.tools.backup = !self.tools.backup,
-            Cmd::PreserveMask => self.tools.preserve_mask = !self.tools.preserve_mask,
-            Cmd::PickColor => self.tools.picking = true,
             Cmd::MagicWandOptions => self.dialog = Some(Dialog::WandOptions),
             Cmd::About => self.about = true,
             Cmd::Copy => {
                 let p = self.params.clone();
-                self.begin(Cmd::Copy, p);
+                self.execute(Cmd::Copy, p);
             }
             c if c.is_image_op() => self.open_op_dialog(c),
             _ => {}
+        }
+    }
+
+    fn set_zoom(&mut self, z: f32) {
+        if let Some(d) = self.doc() {
+            let crossed = (d.zoom >= 1.0) != (z >= 1.0);
+            d.zoom = z.clamp(1.0 / 32.0, 32.0);
+            if crossed {
+                d.mark_stale(); // texture filtering changes at 1:1
+            }
+        }
+    }
+
+    fn zoom_by(&mut self, f: f32) {
+        if let Some(z) = self.docs.get(self.active).map(|d| d.zoom) {
+            self.set_zoom(z * f);
         }
     }
 
@@ -470,37 +534,23 @@ impl App {
         params.color = self.tools.color;
         apply::prepare(cmd, &mut params, self.docs.get(self.active).map(|d| &d.img));
         if apply::needs_dialog(cmd) {
-            self.preview = None;
+            self.preview = Preview::default();
             self.dialog = Some(Dialog::Op(cmd, params));
         } else {
-            self.begin(cmd, params);
+            self.execute(cmd, params);
         }
     }
 
-    /// Parameters are known; process the whole image or wait for an area.
-    fn begin(&mut self, cmd: Cmd, params: OpParams) {
+    /// Parameters are known: set the brush's effect, or apply to the
+    /// selection (or the whole image).
+    fn execute(&mut self, cmd: Cmd, params: OpParams) {
         self.params = params.clone();
-        // An area outlined before choosing the command is used directly.
-        let keep = matches!(
-            self.tools.area,
-            Area::Rect
-                | Area::Ellipse
-                | Area::Polygon
-                | Area::Text
-                | Area::MagicWand
-                | Area::Freehand
-        ) && (self.sel.ready() || self.area_mask.is_some());
-        if !keep {
-            self.reset_area();
-        }
-        self.state = State::Idle;
-        let Some(d) = self.docs.get(self.active) else {
-            if cmd == Cmd::New {
-                self.new_image(&params);
-            }
+        if self.tools.tool == Tool::Brush && cmd.paintable() {
+            self.brush_effect = Pending { cmd, params };
+            self.effect_gen += 1;
+            self.brush = None;
             return;
-        };
-        let (w, h) = (d.img.w, d.img.h);
+        }
         match cmd {
             Cmd::New => return self.new_image(&params),
             Cmd::Size => {
@@ -559,30 +609,7 @@ impl App {
             }
             _ => {}
         }
-        let pending = Pending { cmd, params };
-        match self.tools.area {
-            Area::Pen => {
-                if cmd == Cmd::Rotate || cmd == Cmd::Clip || cmd == Cmd::Copy {
-                    self.message = Some(format!("{} can't be used with the pen.", cmd.title()));
-                    return;
-                }
-                self.state = State::Pen(pending, None);
-                self.pen_session();
-            }
-            Area::Whole => {
-                let chosen = Chosen {
-                    selected: Mask::full(w, h),
-                    weights: None,
-                };
-                self.process(pending, chosen);
-            }
-            _ if keep => {
-                if let Some(chosen) = self.choose_area(None) {
-                    self.process(pending, chosen);
-                }
-            }
-            _ => self.state = State::Select(pending),
-        }
+        self.apply_to_selection(cmd, params);
     }
 
     fn new_image(&mut self, p: &OpParams) {
@@ -598,21 +625,36 @@ impl App {
         );
     }
 
-    /// The area is chosen; do what the command does with it.
-    fn process(&mut self, pending: Pending, chosen: Chosen) {
-        let Pending { cmd, params } = pending;
+    /// The selection, or the whole image.
+    fn chosen(&self) -> Option<Chosen> {
+        let d = self.docs.get(self.active)?;
+        Some(match &d.selection {
+            Some(s) => Chosen {
+                selected: s.mask.clone(),
+                selection: Some((s.clone(), edge(self.tools.edge))),
+                scope: Scope::Selection {
+                    elliptic: s.elliptic,
+                },
+            },
+            None => Chosen {
+                selected: Mask::full(d.img.w, d.img.h),
+                selection: None,
+                scope: Scope::Whole,
+            },
+        })
+    }
+
+    fn apply_to_selection(&mut self, cmd: Cmd, params: OpParams) {
+        let Some(chosen) = self.chosen() else { return };
         let Some(d) = self.docs.get(self.active) else {
             return;
         };
         let roi = chosen.selected.bounds();
-        if roi.is_empty() {
-            return;
-        }
-        let whole = self.tools.area == Area::Whole;
+        let selected = d.selection.as_ref();
         match cmd {
             #[cfg(target_arch = "wasm32")]
             Cmd::Copy => {
-                let _ = d;
+                let _ = (d, roi, selected);
                 self.message =
                     Some("Copy to the clipboard isn't available in the browser; use Save".into());
             }
@@ -635,14 +677,11 @@ impl App {
                     self.message = Some(format!("Can't copy to the clipboard: {e}"));
                 }
             }
-            Cmd::Clip => {
-                if whole {
-                    self.message = Some("Select the area to clip first.".into());
-                    return;
-                }
-                self.run_job(cmd, move |src, rng| Ok((src.crop(roi), rng)));
+            Cmd::Clip if selected.is_none() => {
+                self.message = Some("Select the area to crop to first.".into())
             }
-            Cmd::Rotate if whole => {
+            Cmd::Clip => self.run_job(cmd, move |src, rng| Ok((src.crop(roi), rng))),
+            Cmd::Rotate if selected.is_none() => {
                 let (angle, bg) = (params.angle, params.color);
                 self.run_job(cmd, move |src, rng| {
                     transform::rotate(&src, angle, bg)
@@ -650,19 +689,21 @@ impl App {
                         .ok_or_else(|| "Incorrect parameters.".to_string())
                 });
             }
-            Cmd::Move if whole => self.message = Some("Move needs a selected area.".into()),
+            Cmd::Move if selected.is_none() => {
+                self.message = Some("Select the area to move first.".into())
+            }
             Cmd::Rubber => {
                 self.state = State::Rubber {
                     pending: Pending { cmd, params },
-                    chosen,
                     roi,
                     from: None,
                     to: None,
-                }
+                };
             }
-            c if apply::is_fragment_op(c) && !whole => {
+            c if apply::is_fragment_op(c) && selected.is_some() => {
+                let elliptic = selected.is_some_and(|s| s.elliptic);
                 if let Some(frag) =
-                    apply::make_fragment(c, &params, &d.img, &chosen.selected, roi, self.tools.area)
+                    apply::make_fragment(c, &params, &d.img, &chosen.selected, roi, elliptic)
                 {
                     self.start_place(frag);
                 }
@@ -671,34 +712,14 @@ impl App {
         }
     }
 
-    /// Run a pixel operation on a worker thread and commit it through the
-    /// selection's edge weights.
+    /// Run a pixel operation on a worker thread.
     fn run_pixel(&mut self, cmd: Cmd, params: OpParams, chosen: Chosen) {
         let Some(d) = self.docs.get(self.active) else {
             return;
         };
         let backup = d.last_backup().cloned();
-        let (area, circle) = (self.tools.area, self.tools.brush == tools::Brush::Circle);
         self.run_job(cmd, move |src, mut rng| {
-            let roi = chosen.selected.bounds();
-            let processed = {
-                let mut ctx = Ctx {
-                    area,
-                    mask: &chosen.selected,
-                    circle_pen: circle,
-                    rng: &mut rng,
-                    backup: backup.as_ref(),
-                };
-                apply::apply(cmd, &params, &src, roi, &mut ctx)
-            };
-            let out = match &chosen.weights {
-                Some(w) => {
-                    let mut out = src;
-                    sel::commit(&mut out, &processed, w);
-                    out
-                }
-                None => processed,
-            };
+            let out = compute(cmd, &params, &src, &chosen, backup.as_ref(), &mut rng);
             Ok((out, rng))
         });
     }
@@ -722,13 +743,14 @@ impl App {
             std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| f(src, rng)))
                 .unwrap_or_else(|_| Err("Unknown error.".to_string()))
         });
+        let title = if cmd.title().is_empty() {
+            "Processing"
+        } else {
+            cmd.title()
+        };
         self.job = Some(Job {
             doc: d.id,
-            title: if cmd.title().is_empty() {
-                "Processing"
-            } else {
-                cmd.title()
-            },
+            title,
             rx,
         });
     }
@@ -746,14 +768,11 @@ impl App {
                             let resized = img.w != d.img.w || img.h != d.img.h;
                             d.set_image(img);
                             if resized {
-                                self.reset_area();
+                                d.fit_pending = true;
                             }
                         }
                     }
                     Err(e) => self.message = Some(e),
-                }
-                if !self.tools.preserve_mask {
-                    self.reset_area();
                 }
             }
             Err(mpsc::TryRecvError::Empty) => {
@@ -770,10 +789,7 @@ impl App {
         if frag.img.w == 0 || frag.img.h == 0 {
             return;
         }
-        self.sel.clear();
-        self.area_mask = None;
-        self.ants = None;
-        self.text_ants = None;
+        self.interaction.clear();
         let rect = egui::Rect::from_min_size(
             pos2(frag.x as f32, frag.y as f32),
             vec2(frag.img.w as f32, frag.img.h as f32),
@@ -782,62 +798,101 @@ impl App {
         self.state = State::Place(Placing { frag, rect, tex });
     }
 
-    /// The area the user double-clicked in: inside or outside of the shape,
-    /// with the edge weights of the current Edge mode.
-    /// `p` = the double-click point (it decides inside or outside); `None`
-    /// takes the inside.
-    fn choose_area(&self, p: Option<egui::Pos2>) -> Option<Chosen> {
-        let d = self.docs.get(self.active)?;
-        let (w, h) = (d.img.w, d.img.h);
-        let (shape_mask, bw, bh) = match (&self.area_mask, &self.sel.shape) {
-            (Some(m), _) => (m.clone(), 0, 0),
-            (None, Some(s)) => {
-                let b = s.bounds();
-                (
-                    s.to_mask(w, h, self.tools.pen_size as usize),
-                    b.width().round() as i32,
-                    b.height().round() as i32,
-                )
-            }
-            _ => return None,
+    fn accept_place(&mut self) {
+        let State::Place(pl) = std::mem::replace(&mut self.state, State::Idle) else {
+            return;
         };
-        let inside = match p {
-            Some(p) => {
-                sel::double_click_inside(&shape_mask, p.x.max(0.0) as usize, p.y.max(0.0) as usize)
-            }
-            None => true,
+        let backup = self.tools.backup;
+        let Some(d) = self.docs.get_mut(self.active) else {
+            return;
         };
-        let selected = sel::selected_mask(&shape_mask, inside);
-        let e = edge(self.tools.edge);
-        let feather = sel::feather_width(area_kind(self.tools.area), e, bw, bh);
-        let weights = sel::selection_weights(&shape_mask, inside, e, feather);
-        Some(Chosen {
-            selected,
-            weights: Some(weights),
-        })
+        let r = pl.rect;
+        let (w, h) = (
+            r.width().round().max(1.0) as usize,
+            r.height().round().max(1.0) as usize,
+        );
+        if w.saturating_mul(h) > MAX_PIXELS {
+            self.message = Some("Fragment too large.".into());
+            return;
+        }
+        let (img, mask) = transform::place_fragment(
+            &d.img,
+            &pl.frag,
+            r.min.x.round() as i64,
+            r.min.y.round() as i64,
+            w,
+            h,
+        );
+        if backup {
+            d.push_undo();
+        }
+        d.set_image(img);
+        // The placed fragment becomes the selection.
+        d.selection = Selection::new(mask, AreaKind::Rect, false);
+    }
+
+    fn apply_rubber(&mut self) {
+        let state = std::mem::replace(&mut self.state, State::Idle);
+        let State::Rubber {
+            mut pending,
+            roi,
+            from: Some(a),
+            to: Some(b),
+        } = state
+        else {
+            self.state = state;
+            return;
+        };
+        let ip = |p: egui::Pos2| (p.x.round() as i64, p.y.round() as i64);
+        pending.params.rubber = (ip(a), ip(b));
+        let Some(chosen) = self.chosen() else { return };
+        match (&chosen.selection, self.docs.get(self.active)) {
+            (Some((s, _)), Some(d)) => {
+                if let Some(f) = apply::make_fragment(
+                    Cmd::Rubber,
+                    &pending.params,
+                    &d.img,
+                    &s.mask,
+                    roi,
+                    s.elliptic,
+                ) {
+                    self.start_place(f);
+                }
+            }
+            _ => self.run_pixel(pending.cmd, pending.params, chosen),
+        }
     }
 
     fn handle_canvas(&mut self, events: Vec<Event>) {
         for e in events {
             match e {
                 Event::Hover(h) => self.hover = h,
-                Event::Cancel => self.cancel(),
-                Event::Picked(c) => {
-                    self.tools.color = c;
-                    self.tools.picking = false;
-                }
-                Event::ApplyAt(p) => {
-                    let State::Select(pending) = &self.state else {
+                // Esc closes menus and dialogs first; only then does it act
+                // on the canvas.
+                Event::Escape if self.dialog.is_some() || self.popup_was_open => {}
+                Event::Escape => match self.state {
+                    State::Idle => self.set_selection(None),
+                    _ => self.state = State::Idle,
+                },
+                Event::Picked(c) => self.tools.color = c,
+                Event::ShapeDone(shape, op) => {
+                    let Some(d) = self.docs.get(self.active) else {
                         continue;
                     };
-                    let pending = pending.clone();
-                    if let Some(chosen) = self.choose_area(Some(p)) {
-                        self.state = State::Idle;
-                        self.message = None;
-                        self.process(pending, chosen);
+                    if shape.is_degenerate() {
+                        continue;
                     }
+                    let mask = shape.to_mask(d.img.w, d.img.h);
+                    let (kind, elliptic) = match shape {
+                        canvas::Shape::Rect(..) => (AreaKind::Rect, false),
+                        canvas::Shape::Ellipse(..) => (AreaKind::Ellipse, true),
+                        canvas::Shape::Polygon(_) => (AreaKind::Polygon, false),
+                        canvas::Shape::Lasso(_) => (AreaKind::Freehand, false),
+                    };
+                    let s = Selection::combine(d.selection.as_ref(), mask, kind, elliptic, op);
+                    self.set_selection(s);
                 }
-                Event::WandSeed(p) => {
+                Event::WandClick(p, op) => {
                     let Some(d) = self.docs.get(self.active) else {
                         continue;
                     };
@@ -857,26 +912,32 @@ impl App {
                         mode,
                         self.tools.wand_unifold,
                     );
-                    self.ants = Some(ants_textures(&self.egui, "wand", &m));
-                    self.area_mask = Some(m);
+                    let s =
+                        Selection::combine(d.selection.as_ref(), m, AreaKind::MagicWand, false, op);
+                    self.set_selection(s);
                 }
-                Event::TextAt(p) => {
+                Event::TextAt(p, op) => {
                     if self.fonts.is_none() {
                         self.fonts = Some(crate::text::available_fonts());
                     }
-                    self.dialog = Some(Dialog::Text(p, self.params.clone()));
+                    self.dialog = Some(Dialog::Text(p, op, self.params.clone()));
                 }
-                Event::PenDown { erase } => self.pen_down(erase),
-                Event::PenDab(p) => self.pen_dab(p),
-                Event::PenUp => {
-                    if let State::Pen(_, Some(s)) = &mut self.state {
+                Event::MoveSelection(dx, dy) => {
+                    let s = self.selection().and_then(|s| s.translated(dx, dy));
+                    self.set_selection(s);
+                }
+                Event::Deselect => self.set_selection(None),
+                Event::BrushDown { erase } => self.brush_down(erase),
+                Event::BrushDab(p) => self.brush_dab(p),
+                Event::BrushUp => {
+                    if let Some(s) = &mut self.brush {
                         s.stroke = None;
                         s.last = None;
                     }
                 }
                 Event::CloneRef(p) => {
-                    self.pen_session();
-                    if let State::Pen(_, Some(s)) = &mut self.state {
+                    self.ensure_brush();
+                    if let Some(s) = &mut self.brush {
                         s.clone_ref = Some(p);
                     }
                 }
@@ -886,111 +947,57 @@ impl App {
                         *to = Some(b);
                     }
                 }
-                Event::RubberApply => {
-                    let state = std::mem::replace(&mut self.state, State::Idle);
-                    let State::Rubber {
-                        mut pending,
-                        chosen,
-                        roi,
-                        from: Some(a),
-                        to: Some(b),
-                    } = state
-                    else {
-                        self.state = state;
-                        continue;
-                    };
-                    let ip = |p: egui::Pos2| (p.x.round() as i64, p.y.round() as i64);
-                    pending.params.rubber = (ip(a), ip(b));
-                    if self.tools.area == Area::Whole {
-                        self.run_pixel(pending.cmd, pending.params, chosen);
-                    } else if let Some(d) = self.docs.get(self.active) {
-                        let frag = apply::make_fragment(
-                            Cmd::Rubber,
-                            &pending.params,
-                            &d.img,
-                            &chosen.selected,
-                            roi,
-                            self.tools.area,
-                        );
-                        if let Some(f) = frag {
-                            self.start_place(f);
-                        }
-                    }
-                }
+                Event::RubberApply => self.apply_rubber(),
                 Event::PlaceSet(r) => {
                     if let State::Place(pl) = &mut self.state {
                         pl.rect = r;
                     }
                 }
-                Event::PlaceAccept => {
-                    let State::Place(pl) = std::mem::replace(&mut self.state, State::Idle) else {
-                        continue;
-                    };
-                    let backup = self.tools.backup;
-                    let Some(d) = self.docs.get_mut(self.active) else {
-                        continue;
-                    };
-                    let r = pl.rect;
-                    let (w, h) = (
-                        r.width().round().max(1.0) as usize,
-                        r.height().round().max(1.0) as usize,
-                    );
-                    if w.saturating_mul(h) > MAX_PIXELS {
-                        self.message = Some("Fragment too large.".into());
-                        continue;
-                    }
-                    let (img, mask) = transform::place_fragment(
-                        &d.img,
-                        &pl.frag,
-                        r.min.x.round() as i64,
-                        r.min.y.round() as i64,
-                        w,
-                        h,
-                    );
-                    if backup {
-                        d.push_undo();
-                    }
-                    d.set_image(img);
-                    if self.tools.preserve_mask {
-                        self.ants = Some(ants_textures(&self.egui, "wand", &mask));
-                        self.area_mask = Some(mask);
-                    }
-                }
+                Event::PlaceAccept => self.accept_place(),
             }
         }
     }
 
-    /// Start a painting session: remember the image and, for operations
-    /// that allow it, compute their result once (in the background).
-    fn pen_session(&mut self) {
-        let (State::Pen(pending, sess), Some(d)) = (&mut self.state, self.docs.get(self.active))
-        else {
+    /// Keep a painting session for the current image and effect, preparing
+    /// the effect in the background when it can be computed once.
+    fn ensure_brush(&mut self) {
+        if self.tools.tool != Tool::Brush {
+            self.brush = None;
+            return;
+        }
+        let Some(d) = self.docs.get(self.active) else {
             return;
         };
-        if sess.is_some() {
+        if self
+            .brush
+            .as_ref()
+            .is_some_and(|s| s.doc == d.id && s.version == d.version && s.effect == self.effect_gen)
+        {
             return;
         }
         let backup = d.img.clone();
-        let preparing = (apply::pen_once(pending.cmd)).then(|| {
-            let (cmd, params, src) = (pending.cmd, pending.params.clone(), backup.clone());
+        let fx = &self.brush_effect;
+        let preparing = apply::pen_once(fx.cmd).then(|| {
+            let (cmd, params, src) = (fx.cmd, fx.params.clone(), backup.clone());
             let (circle, mut rng) = (self.tools.brush == tools::Brush::Circle, self.rng.clone());
             platform::spawn(move || {
                 let full = Mask::full(src.w, src.h);
                 let mut ctx = Ctx {
-                    area: Area::Pen,
+                    scope: Scope::Brush { circle },
                     mask: &full,
-                    circle_pen: circle,
                     rng: &mut rng,
                     backup: Some(&src),
                 };
                 apply::apply(cmd, &params, &src, src.rect(), &mut ctx)
             })
         });
-        *sess = Some(PenSession {
+        self.brush = Some(BrushSession {
+            doc: d.id,
+            version: d.version,
+            effect: self.effect_gen,
             backup,
             processed: None,
             preparing,
-            undo_pushed: false,
             stroke: None,
             last: None,
             erase: false,
@@ -999,9 +1006,8 @@ impl App {
         });
     }
 
-    /// Pick up the precomputed result when it is ready.
-    fn poll_pen(&mut self, ctx: &egui::Context) {
-        if let State::Pen(_, Some(s)) = &mut self.state
+    fn poll_brush(&mut self, ctx: &egui::Context) {
+        if let Some(s) = &mut self.brush
             && let Some(rx) = &s.preparing
         {
             match rx.try_recv() {
@@ -1017,9 +1023,14 @@ impl App {
         }
     }
 
-    fn pen_down(&mut self, erase: bool) {
-        self.pen_session();
-        if let State::Pen(_, Some(s)) = &mut self.state {
+    fn brush_down(&mut self, erase: bool) {
+        self.ensure_brush();
+        let backup = self.tools.backup;
+        if let (Some(s), Some(d)) = (&mut self.brush, self.docs.get_mut(self.active)) {
+            // One undo step per stroke.
+            if backup {
+                d.push_undo();
+            }
             s.stroke = Some(sel::Stroke::begin(3));
             s.last = None;
             s.erase = erase;
@@ -1027,21 +1038,17 @@ impl App {
         }
     }
 
-    fn pen_dab(&mut self, p: egui::Pos2) {
-        let backup_on = self.tools.backup;
-        let (State::Pen(pending, Some(s)), Some(d)) =
-            (&mut self.state, self.docs.get_mut(self.active))
-        else {
+    fn brush_dab(&mut self, p: egui::Pos2) {
+        let (Some(s), Some(d)) = (&mut self.brush, self.docs.get_mut(self.active)) else {
             return;
         };
         let Some(stroke) = s.stroke.as_mut() else {
             return;
         };
-        let cmd = pending.cmd;
-        let once = apply::pen_once(cmd);
-        if once && !s.erase && s.processed.is_none() {
-            // Still preparing; the status bar says so.
-            return;
+        let fx = &self.brush_effect;
+        let cmd = fx.cmd;
+        if apply::pen_once(cmd) && !s.erase && s.processed.is_none() {
+            return; // still preparing; the status bar says so
         }
         let size = self.tools.pen_size as usize;
         let kind = if self.tools.brush == tools::Brush::Circle {
@@ -1051,21 +1058,15 @@ impl App {
         };
         let pen = sel::PenParams {
             brush: sel::Brush { size, kind },
-            edge: edge(self.tools.edge),
+            edge: edge(self.tools.brush_edge),
             airbrush: 16000,
         };
         if cmd == Cmd::Move && !s.erase && s.clone_offset.is_none() {
             let Some(r) = s.clone_ref else {
-                self.message = Some("Shift-click the reference point first".into());
+                self.message = Some("Shift-click the spot to clone from first".into());
                 return;
             };
             s.clone_offset = Some(((r.x - p.x).round() as i64, (r.y - p.y).round() as i64));
-        }
-        if !s.undo_pushed {
-            s.undo_pushed = true;
-            if backup_on {
-                d.push_undo();
-            }
         }
         // Dabs along the drag (the original only dabbed at mouse-move events,
         // which leaves gaps on fast strokes).
@@ -1086,13 +1087,13 @@ impl App {
                 continue;
             }
             let local = (ci.0 - r.x as i32, ci.1 - r.y as i32);
-            let mut out = d.img.crop(r);
+            let before = d.img.crop(r);
+            let mut out = before.clone();
             if s.erase {
-                let cur = out.clone();
                 sel::paint_dab(
                     &mut out,
                     &s.backup.crop(r),
-                    &cur,
+                    &before,
                     local,
                     &pen,
                     stroke,
@@ -1102,14 +1103,13 @@ impl App {
                 // Fills accumulate on the current image, the rest reads the
                 // image as it was when painting started.
                 let source = if apply::is_fill(cmd) {
-                    out.clone()
+                    before.clone()
                 } else {
                     s.backup.crop(r)
                 };
                 let processed = if cmd == Cmd::Move {
                     let (dx, dy) = s.clone_offset.unwrap_or((0, 0));
-                    let bg = pending.params.color;
-                    let mut img = Image::new(r.w, r.h, bg);
+                    let mut img = Image::new(r.w, r.h, fx.params.color);
                     for y in 0..r.h {
                         for x in 0..r.w {
                             let (sx, sy) = ((r.x + x) as i64 + dx, (r.y + y) as i64 + dy);
@@ -1128,13 +1128,14 @@ impl App {
                 } else {
                     let full = Mask::full(r.w, r.h);
                     let mut ctx = Ctx {
-                        area: Area::Pen,
+                        scope: Scope::Brush {
+                            circle: kind == sel::BrushKind::Circle,
+                        },
                         mask: &full,
-                        circle_pen: kind == sel::BrushKind::Circle,
                         rng: &mut self.rng,
                         backup: Some(&s.backup),
                     };
-                    apply::apply(cmd, &pending.params, &source, source.rect(), &mut ctx)
+                    apply::apply(cmd, &fx.params, &source, source.rect(), &mut ctx)
                 };
                 sel::paint_dab(
                     &mut out,
@@ -1145,6 +1146,16 @@ impl App {
                     stroke,
                     &mut self.rng,
                 );
+            }
+            // Painting stays inside the selection.
+            if let Some(selm) = &d.selection {
+                for y in 0..r.h {
+                    for x in 0..r.w {
+                        if selm.mask.get(r.x + x, r.y + y) == 0 {
+                            out.set(x, y, before.get(x, y));
+                        }
+                    }
+                }
             }
             for y in 0..r.h {
                 d.img.row_mut(r.y + y)[r.x..r.x + r.w].copy_from_slice(out.row(y));
@@ -1158,28 +1169,116 @@ impl App {
         s.last = Some(p);
     }
 
+    /// Keep the open dialog's live preview up to date (computed off the UI
+    /// thread; the latest parameters win).
+    fn update_preview(&mut self, ctx: &egui::Context) {
+        let Some(Dialog::Op(cmd, params)) = &self.dialog else {
+            return;
+        };
+        if !self.show_preview || !apply::has_preview(*cmd) || self.tools.tool == Tool::Brush {
+            return;
+        }
+        let Some(d) = self.docs.get(self.active) else {
+            return;
+        };
+        let key = apply::preview_key(*cmd, params);
+        if let Some((k, rx)) = &self.preview.computing {
+            match rx.try_recv() {
+                Ok(img) => {
+                    let k = k.clone();
+                    match &mut self.preview.tex {
+                        Some(t) => {
+                            let raw: Vec<u8> = img.px.iter().flatten().copied().collect();
+                            t.set(
+                                ColorImage::from_rgb([img.w, img.h], &raw),
+                                TextureOptions::NEAREST,
+                            );
+                        }
+                        None => self.preview.tex = Some(image_texture(ctx, "preview", &img)),
+                    }
+                    self.preview.img = Some(img);
+                    self.preview.key = k;
+                    self.preview.computing = None;
+                }
+                Err(mpsc::TryRecvError::Empty) => {
+                    ctx.request_repaint_after(std::time::Duration::from_millis(30));
+                    return;
+                }
+                Err(mpsc::TryRecvError::Disconnected) => self.preview.computing = None,
+            }
+        }
+        let stale = self.preview.doc != d.id || self.preview.version != d.version;
+        if (self.preview.key != key || stale || self.preview.img.is_none())
+            && self.preview.computing.is_none()
+        {
+            let Some(chosen) = self.chosen() else { return };
+            let (cmd, params, src) = (*cmd, params.clone(), d.img.clone());
+            let backup = d.last_backup().cloned();
+            let mut rng = self.rng.clone();
+            self.preview.doc = d.id;
+            self.preview.version = d.version;
+            if stale {
+                self.preview.img = None;
+            }
+            let rx = platform::spawn(move || {
+                compute(cmd, &params, &src, &chosen, backup.as_ref(), &mut rng)
+            });
+            self.preview.computing = Some((key, rx));
+            ctx.request_repaint_after(std::time::Duration::from_millis(30));
+        }
+    }
+
+    /// OK in a dialog: use the finished preview if it matches, else run it.
+    fn accept_dialog(&mut self, cmd: Cmd, params: OpParams) {
+        let key = apply::preview_key(cmd, &params);
+        let ready = self.preview.img.is_some()
+            && self.preview.key == key
+            && self.tools.tool != Tool::Brush
+            && self
+                .docs
+                .get(self.active)
+                .is_some_and(|d| d.id == self.preview.doc && d.version == self.preview.version)
+            && apply::has_preview(cmd)
+            && !(apply::is_fragment_op(cmd) && self.selection().is_some());
+        if ready {
+            let img = self.preview.img.take().unwrap();
+            self.params = params;
+            let backup = self.tools.backup;
+            if let Some(d) = self.doc() {
+                if backup {
+                    d.push_undo();
+                }
+                d.set_image(img);
+            }
+        } else {
+            self.execute(cmd, params);
+        }
+        self.preview = Preview::default();
+    }
+
     fn menu_bar(&mut self, ui: &mut egui::Ui) {
         let mut chosen = None;
         let mut open_recent: Option<PathBuf> = None;
         let has_doc = !self.docs.is_empty();
-        let can_undo = self
-            .docs
-            .get(self.active)
-            .is_some_and(|d| d.last_backup().is_some());
+        let d = self.docs.get(self.active);
+        let (can_undo, can_redo) = (
+            d.is_some_and(|d| d.can_undo()),
+            d.is_some_and(|d| d.can_redo()),
+        );
+        let has_sel = d.is_some_and(|d| d.selection.is_some());
         egui::MenuBar::new().ui(ui, |ui| {
             ui.menu_button("File", |ui| {
                 item(ui, "New…", Some("Ctrl+N"), Cmd::New, true, &mut chosen);
                 item(ui, "Open…", Some("Ctrl+O"), Cmd::Open, true, &mut chosen);
-                item(ui, "Reload", None, Cmd::Reload, has_doc, &mut chosen);
                 ui.add_enabled_ui(!self.recent.is_empty(), |ui| {
-                    ui.menu_button("Recent", |ui| {
-                        for (i, p) in self.recent.iter().enumerate() {
+                    ui.menu_button("Open recent", |ui| {
+                        for p in &self.recent {
                             let name = p.file_name().map_or_else(
                                 || p.display().to_string(),
                                 |n| n.to_string_lossy().into_owned(),
                             );
                             if ui
-                                .button(format!("{} {name}", i + 1))
+                                .button(name)
                                 .on_hover_text(p.display().to_string())
                                 .clicked()
                             {
@@ -1189,37 +1288,74 @@ impl App {
                         }
                     });
                 });
+                item(ui, "Reload", None, Cmd::Reload, has_doc, &mut chosen);
                 ui.separator();
                 item(ui, "Save", Some("Ctrl+S"), Cmd::Save, has_doc, &mut chosen);
-                item(ui, "Save As…", None, Cmd::SaveAs, has_doc, &mut chosen);
-                ui.separator();
+                item(
+                    ui,
+                    "Save As…",
+                    Some("Ctrl+Shift+S"),
+                    Cmd::SaveAs,
+                    has_doc,
+                    &mut chosen,
+                );
                 #[cfg(not(target_arch = "wasm32"))]
-                item(ui, "Exit", None, Cmd::Exit, true, &mut chosen);
+                {
+                    ui.separator();
+                    item(ui, "Exit", None, Cmd::Exit, true, &mut chosen);
+                }
             });
-            ui.menu_button("Edit", |ui| {
-                ui.add_enabled_ui(has_doc && self.job.is_none(), |ui| {
-                    for m in commands::edit_menu() {
-                        match m {
-                            MenuItem::Cmd(l, Cmd::Undo) => {
-                                item(ui, l, Some("Ctrl+Z"), Cmd::Undo, can_undo, &mut chosen)
-                            }
-                            m => menu_item(ui, &m, &mut chosen),
+            for (title, items) in commands::image_menus() {
+                ui.menu_button(title, |ui| {
+                    ui.add_enabled_ui(has_doc && self.job.is_none(), |ui| {
+                        for m in &items {
+                            let enabled = |c: Cmd| match c {
+                                Cmd::Undo => can_undo,
+                                Cmd::Redo => can_redo,
+                                Cmd::SelectNone | Cmd::Clip | Cmd::Move => has_sel,
+                                _ => true,
+                            };
+                            menu_item(ui, m, &enabled, &mut chosen);
                         }
-                    }
+                        if title == "Edit" {
+                            ui.separator();
+                            check(
+                                ui,
+                                "Undo history",
+                                self.tools.backup,
+                                Cmd::CreateBackup,
+                                &mut chosen,
+                            );
+                        }
+                    });
                 });
-            });
+            }
             ui.menu_button("View", |ui| {
                 ui.add_enabled_ui(has_doc, |ui| {
-                    ui.menu_button("Zoom out", |ui| {
-                        for (i, l) in [(3, "1:2"), (2, "1:4"), (1, "1:6"), (0, "1:8")] {
-                            item(ui, l, None, Cmd::Zoom(i), true, &mut chosen);
-                        }
-                    });
-                    ui.menu_button("Zoom in", |ui| {
-                        for (i, l) in [(5, "2:1"), (6, "4:1"), (7, "6:1"), (8, "8:1")] {
-                            item(ui, l, None, Cmd::Zoom(i), true, &mut chosen);
-                        }
-                    });
+                    item(
+                        ui,
+                        "Zoom in",
+                        Some("Ctrl++"),
+                        Cmd::ZoomIn,
+                        true,
+                        &mut chosen,
+                    );
+                    item(
+                        ui,
+                        "Zoom out",
+                        Some("Ctrl+-"),
+                        Cmd::ZoomOut,
+                        true,
+                        &mut chosen,
+                    );
+                    item(
+                        ui,
+                        "Fit in window",
+                        Some("Ctrl+0"),
+                        Cmd::ZoomFit,
+                        true,
+                        &mut chosen,
+                    );
                     item(
                         ui,
                         "Original size [1:1]",
@@ -1228,6 +1364,20 @@ impl App {
                         true,
                         &mut chosen,
                     );
+                    ui.menu_button("Zoom", |ui| {
+                        for (i, l) in [
+                            (0, "1:8"),
+                            (1, "1:6"),
+                            (2, "1:4"),
+                            (3, "1:2"),
+                            (5, "2:1"),
+                            (6, "4:1"),
+                            (7, "6:1"),
+                            (8, "8:1"),
+                        ] {
+                            item(ui, l, None, Cmd::Zoom(i), true, &mut chosen);
+                        }
+                    });
                 });
                 ui.separator();
                 check(
@@ -1239,70 +1389,15 @@ impl App {
                 );
                 check(ui, "Toolbox", self.show_toolbox, Cmd::Toolbox, &mut chosen);
             });
-            ui.menu_button("Options", |ui| {
-                ui.menu_button("Area", |ui| {
-                    for (a, l) in [
-                        (Area::Whole, "Whole image"),
-                        (Area::Rect, "Rectangle"),
-                        (Area::Ellipse, "Ellipse"),
-                        (Area::Polygon, "Polygon"),
-                        (Area::Text, "Text"),
-                        (Area::MagicWand, "Magic Wand"),
-                        (Area::Freehand, "Freehand"),
-                        (Area::Pen, "Pen"),
-                    ] {
-                        ui.radio_value(&mut self.tools.area, a, l);
-                    }
-                });
-                ui.menu_button("Edge", |ui| {
-                    use tools::Edge::*;
-                    for (e, l) in [
-                        (Sharp, "Sharp"),
-                        (Low, "Smooth low"),
-                        (Medium, "Smooth medium"),
-                        (High, "Smooth high"),
-                    ] {
-                        ui.radio_value(&mut self.tools.edge, e, l);
-                    }
-                });
-                ui.menu_button("Pen/brush/line size", |ui| {
-                    for s in tools::PEN_SIZES {
-                        ui.radio_value(&mut self.tools.pen_size, s, format!("{s} (×{s})"));
-                    }
-                });
-                ui.menu_button("Pen/brush type", |ui| {
-                    ui.radio_value(&mut self.tools.brush, tools::Brush::Square, "Square");
-                    ui.radio_value(&mut self.tools.brush, tools::Brush::Circle, "Circle");
-                });
-                ui.menu_button("Color", |ui| {
-                    item(ui, "Pick up…", None, Cmd::PickColor, has_doc, &mut chosen);
-                });
+            ui.menu_button("Help", |ui| {
                 item(
                     ui,
-                    "Magic wand…",
+                    "About Picture Man…",
                     None,
-                    Cmd::MagicWandOptions,
+                    Cmd::About,
                     true,
                     &mut chosen,
                 );
-                ui.separator();
-                check(
-                    ui,
-                    "Create backup",
-                    self.tools.backup,
-                    Cmd::CreateBackup,
-                    &mut chosen,
-                );
-                check(
-                    ui,
-                    "Preserve mask",
-                    self.tools.preserve_mask,
-                    Cmd::PreserveMask,
-                    &mut chosen,
-                );
-            });
-            ui.menu_button("Help", |ui| {
-                item(ui, "About…", None, Cmd::About, true, &mut chosen);
             });
         });
         if let Some(c) = chosen {
@@ -1313,56 +1408,156 @@ impl App {
         }
     }
 
+    /// The tool options bar under the menus.
+    fn options_bar(&mut self, ui: &mut egui::Ui) {
+        let mut cmd = None;
+        ui.horizontal(|ui| {
+            ui.spacing_mut().item_spacing.x = 8.0;
+            match &mut self.state {
+                State::Place(_) => {
+                    ui.label(RichText::new("Place").strong());
+                    ui.label("Drag to move, drag the corners to resize (Ctrl keeps proportions, Shift-click = original size)");
+                    if ui.button("✔ Apply").clicked() {
+                        self.accept_place();
+                    }
+                    if ui.button("Cancel").clicked() {
+                        self.state = State::Idle;
+                    }
+                    return;
+                }
+                State::Rubber { from, .. } => {
+                    let ready = from.is_some();
+                    ui.label(RichText::new("Rubber").strong());
+                    ui.label("Drag a point to where it should go");
+                    if ui.add_enabled(ready, egui::Button::new("✔ Apply")).clicked() {
+                        self.apply_rubber();
+                    }
+                    if ui.button("Cancel").clicked() {
+                        self.state = State::Idle;
+                    }
+                    return;
+                }
+                State::Idle => {}
+            }
+            let t = &mut self.tools;
+            ui.label(RichText::new(t.tool.name()).strong());
+            ui.separator();
+            match t.tool {
+                Tool::Brush => {
+                    let fx = &self.brush_effect;
+                    ui.label("Paints with");
+                    let name = if fx.cmd == Cmd::Move { "Clone" } else { fx.cmd.title() };
+                    ui.label(RichText::new(name).strong().color(ui.visuals().hyperlink_color));
+                    if fx.cmd == Cmd::FillPlain {
+                        let [r, g, b] = t.color;
+                        let mut c = Color32::from_rgb(r, g, b);
+                        if egui::color_picker::color_edit_button_srgba(ui, &mut c, egui::color_picker::Alpha::Opaque).changed() {
+                            t.color = [c.r(), c.g(), c.b()];
+                            self.brush_effect.params.color = t.color;
+                            self.effect_gen += 1;
+                        }
+                    }
+                    if ui.small_button("Color").on_hover_text("Paint with the current color").clicked() {
+                        cmd = Some(Cmd::FillPlain);
+                    }
+                    ui.separator();
+                    ui.label("Size");
+                    egui::ComboBox::from_id_salt("opt-size").width(60.0).selected_text(format!("{0}×{0}", t.pen_size)).show_ui(
+                        ui,
+                        |ui| {
+                            for s in tools::PEN_SIZES {
+                                ui.selectable_value(&mut t.pen_size, s, format!("{s}×{s}"));
+                            }
+                        },
+                    );
+                    ui.selectable_value(&mut t.brush, tools::Brush::Circle, "Round");
+                    ui.selectable_value(&mut t.brush, tools::Brush::Square, "Square");
+                    edge_combo(ui, &mut t.brush_edge, "Softness");
+                }
+                Tool::Eyedropper => {
+                    let [r, g, b] = t.color;
+                    let (resp, p) = ui.allocate_painter(vec2(28.0, 16.0), egui::Sense::hover());
+                    p.rect_filled(resp.rect, 3.0, Color32::from_rgb(r, g, b));
+                    ui.label(format!("{r} {g} {b}"));
+                }
+                _ => {
+                    edge_combo(ui, &mut t.edge, "Edge");
+                    if t.tool == Tool::Wand {
+                        ui.separator();
+                        let mut tol = t.wand_tolerance as i32;
+                        ui.add(egui::Slider::new(&mut tol, 1..=100).text("Tolerance"));
+                        t.wand_tolerance = tol as u8;
+                        ui.selectable_value(&mut t.wand_hsv, false, "RGB");
+                        ui.selectable_value(&mut t.wand_hsv, true, "HSV");
+                        ui.checkbox(&mut t.wand_unifold, "Contiguous");
+                    }
+                }
+            }
+            let (has_sel, info) = match self.docs.get(self.active).and_then(|d| d.selection.as_ref()) {
+                Some(s) => (true, format!("Selection {} × {}", s.bounds.w, s.bounds.h)),
+                None => (false, "Whole image".to_string()),
+            };
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                if ui.add_enabled(has_sel, egui::Button::new("Invert")).clicked() {
+                    cmd = Some(Cmd::InvertSelection);
+                }
+                if ui.add_enabled(has_sel, egui::Button::new("None")).clicked() {
+                    cmd = Some(Cmd::SelectNone);
+                }
+                if ui.button("All").clicked() {
+                    cmd = Some(Cmd::SelectAll);
+                }
+                ui.label(RichText::new(info).weak());
+            });
+        });
+        if let Some(c) = cmd {
+            let ctx = ui.ctx().clone();
+            if c == Cmd::FillPlain {
+                let p = self.params.clone();
+                self.brush_effect = Pending {
+                    cmd: c,
+                    params: OpParams {
+                        color: self.tools.color,
+                        ..p
+                    },
+                };
+                self.effect_gen += 1;
+            } else {
+                self.invoke(c, &ctx);
+            }
+        }
+    }
+
     fn status_bar(&mut self, ui: &mut egui::Ui) {
         ui.horizontal(|ui| {
-            let hint = match &self.state {
-                State::Idle => match self.tools.area {
-                    _ if self.docs.is_empty() => None,
-                    Area::Whole => None,
-                    Area::Pen => Some("Pen: choose a command, then paint with it".into()),
-                    Area::Polygon if !self.sel.ready() => Some(
-                        "Polygon: click vertices, double-click to close, then choose a command (it applies inside)".into(),
-                    ),
-                    Area::MagicWand if self.area_mask.is_none() => {
-                        Some("Magic wand: click a color, then choose a command (it applies inside)".into())
-                    }
-                    Area::Text if self.sel.shape.is_none() => {
-                        Some("Text: click where the text starts (bottom-left), then choose a command".into())
-                    }
-                    _ if self.sel.ready() || self.area_mask.is_some() => Some(
-                        "Choose a command to process this area (Esc clears it)".into(),
-                    ),
-                    _ => Some("Outline an area, then choose a command (it applies inside)".into()),
-                },
-                State::Select(p) => Some(format!(
-                    "{}: {}",
-                    p.cmd.title(),
-                    match self.tools.area {
-                        Area::Polygon => "click vertices, double-click to close; then double-click inside or outside",
-                        Area::MagicWand => "click a color, then double-click inside or outside",
-                        Area::Text => "click where the text starts (bottom-left), drag it, then double-click inside or outside",
-                        Area::Freehand => "draw the outline (right-click erases), then double-click inside or outside",
-                        _ => "outline the area, then double-click inside or outside",
-                    }
-                )),
-                State::Pen(p, _) if p.cmd == Cmd::Move => Some("Clone: Shift-click the reference point, then paint".into()),
-                State::Pen(p, Some(sess)) if sess.preparing.is_some() => {
-                    Some(format!("{}: preparing…", p.cmd.title()))
-                }
-                State::Pen(p, _) => Some(format!("{}: paint with the pen (right button restores)", p.cmd.title())),
-                State::Rubber { .. } => Some("Rubber: drag a point to its new place, then double-click".into()),
-                State::Place(_) => Some("Drag or resize the fragment (Ctrl = proportional, Shift-click = original size); double-click to accept".into()),
-            };
             if let Some(job) = &self.job {
                 ui.spinner();
                 ui.label(format!("{}…", job.title));
-            } else if let Some(h) = hint {
-                let esc = if matches!(self.state, State::Idle) { "" } else { "   (Esc cancels)" };
-                ui.label(RichText::new(format!("{h}{esc}")).strong());
+            } else if self.brush.as_ref().is_some_and(|s| s.preparing.is_some()) {
+                ui.spinner();
+                ui.label(format!("Preparing {}…", self.brush_effect.cmd.title()));
             } else if let Some(m) = &self.message {
-                ui.label(RichText::new(m).color(Color32::from_rgb(220, 80, 60)));
+                ui.label(RichText::new(m).color(Color32::from_rgb(220, 90, 60)));
+            } else if self.docs.is_empty() {
+                ui.label("Open an image to start (Ctrl+O), or drop files on the window");
             } else {
-                ui.label("Ready");
+                let what = if self.selection().is_some() { "the selection" } else { "the whole image" };
+                let hint = match (&self.state, self.tools.tool) {
+                    (State::Place(_), _) => "Drag to move, drag corners to resize (Ctrl keeps proportions); double-click or Apply".to_string(),
+                    (State::Rubber { .. }, _) => "Drag a point to where it should go, then Apply".to_string(),
+                    (_, Tool::Brush) => "Paint · right-drag restores · any Adjust, Fill or Filters command sets the effect · Image > Move then Shift-click a source clones".to_string(),
+                    (_, Tool::Eyedropper) => "Click the image to pick the current color".to_string(),
+                    (_, t) => {
+                        let how = match t {
+                            Tool::Polygon => "Click the corners, double-click to close",
+                            Tool::Text => "Click where the text starts",
+                            Tool::Wand => "Click a color",
+                            _ => "Drag to select",
+                        };
+                        format!("{how} · Shift adds · Alt subtracts · drag inside to move · commands apply to {what}")
+                    }
+                };
+                ui.label(RichText::new(hint).weak());
             }
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 if let Some(d) = self.docs.get(self.active) {
@@ -1391,56 +1586,46 @@ impl App {
                     choose_pattern: false,
                 };
                 let mut result = None;
-                if apply::has_preview(cmd)
-                    && self.preview.is_none()
-                    && let Some(d) = self.docs.get(self.active)
-                {
-                    let thumb = apply::thumbnail(&d.img, 200);
-                    let tex = ctx.load_texture(
-                        "preview",
-                        ColorImage::from_rgb([1, 1], &[0, 0, 0]),
-                        TextureOptions::LINEAR,
-                    );
-                    self.preview = Some((tex, thumb));
+                let brush = self.tools.tool == Tool::Brush && cmd.paintable();
+                let previewing = apply::has_preview(cmd) && !brush;
+                let busy = self.preview.computing.is_some();
+                let mut open = true;
+                egui::Window::new(cmd.title())
+                    .id(egui::Id::new("op-dialog"))
+                    .open(&mut open)
+                    .collapsible(false)
+                    .resizable(false)
+                    .anchor(egui::Align2::RIGHT_TOP, vec2(-16.0, 80.0))
+                    .show(ctx, |ui| {
+                        apply::dialog_ui(ui, cmd, &mut params, &mut env);
+                        ui.add_space(8.0);
+                        if previewing {
+                            ui.horizontal(|ui| {
+                                ui.checkbox(&mut self.show_preview, "Preview");
+                                if busy && self.show_preview {
+                                    ui.spinner();
+                                }
+                            });
+                        }
+                        if brush {
+                            ui.label(RichText::new("OK sets the brush's effect").weak());
+                        }
+                        ui.horizontal(|ui| {
+                            if ui.button("OK").clicked()
+                                || ui.input(|i| i.key_pressed(egui::Key::Enter))
+                            {
+                                result = Some(true);
+                            }
+                            if ui.button("Cancel").clicked()
+                                || ui.input(|i| i.key_pressed(egui::Key::Escape))
+                            {
+                                result = Some(false);
+                            }
+                        });
+                    });
+                if !open {
+                    result = Some(false);
                 }
-                egui::Modal::new(egui::Id::new("op-dialog")).show(ctx, |ui| {
-                    ui.heading(cmd.title());
-                    ui.add_space(6.0);
-                    ui.horizontal_top(|ui| {
-                        if let Some((tex, thumb)) = &mut self.preview {
-                            let mut rng = self.rng.clone();
-                            let full = Mask::full(thumb.w, thumb.h);
-                            let mut c = Ctx {
-                                area: Area::Whole,
-                                mask: &full,
-                                circle_pen: false,
-                                rng: &mut rng,
-                                backup: None,
-                            };
-                            let out = apply::apply(cmd, &params, thumb, thumb.rect(), &mut c);
-                            let raw: Vec<u8> = out.px.iter().flatten().copied().collect();
-                            tex.set(
-                                ColorImage::from_rgb([out.w, out.h], &raw),
-                                TextureOptions::LINEAR,
-                            );
-                            ui.add(egui::Image::new(&*tex).fit_to_original_size(1.0));
-                        }
-                        ui.vertical(|ui| apply::dialog_ui(ui, cmd, &mut params, &mut env));
-                    });
-                    ui.add_space(8.0);
-                    ui.horizontal(|ui| {
-                        if ui.button("OK").clicked()
-                            || ui.input(|i| i.key_pressed(egui::Key::Enter))
-                        {
-                            result = Some(true);
-                        }
-                        if ui.button("Cancel").clicked()
-                            || ui.input(|i| i.key_pressed(egui::Key::Escape))
-                        {
-                            result = Some(false);
-                        }
-                    });
-                });
                 let choose_pattern = env.choose_pattern;
                 let pattern_missing = matches!(
                     cmd,
@@ -1451,11 +1636,8 @@ impl App {
                         self.message = Some("Choose a pattern image first.".into());
                         self.dialog = Some(Dialog::Op(cmd, params));
                     }
-                    Some(true) => {
-                        self.preview = None;
-                        self.begin(cmd, params);
-                    }
-                    Some(false) => self.preview = None,
+                    Some(true) => self.accept_dialog(cmd, params),
+                    Some(false) => self.preview = Preview::default(),
                     None => self.dialog = Some(Dialog::Op(cmd, params)),
                 }
                 // The chosen pattern is put into the open dialog when it arrives.
@@ -1489,7 +1671,7 @@ impl App {
                     None => self.dialog = Some(Dialog::SaveName(name)),
                 }
             }
-            Some(Dialog::Text(at, mut params)) => {
+            Some(Dialog::Text(at, op, mut params)) => {
                 let fonts = self.fonts.get_or_insert_with(crate::text::available_fonts);
                 let mut result = None;
                 egui::Modal::new(egui::Id::new("text-dialog")).show(ctx, |ui| {
@@ -1515,23 +1697,42 @@ impl App {
                         let mask = font.and_then(|f| {
                             crate::text::render_text_mask(&params.text, &f, params.font_px)
                         });
-                        match mask {
-                            Some(m) => {
-                                self.text_ants = Some(ants_textures(&self.egui, "text", &m));
-                                self.sel.shape = Some(Shape::Text(
-                                    Arc::new(m.clone()),
-                                    pos2(at.x, at.y - m.h as f32),
-                                ));
+                        match (mask, self.docs.get(self.active)) {
+                            (Some(m), Some(d)) => {
+                                // Bottom-left corner at the click.
+                                let (ox, oy) =
+                                    (at.x.round() as i64, at.y.round() as i64 - m.h as i64);
+                                let mut full = Mask::empty(d.img.w, d.img.h);
+                                for y in 0..m.h {
+                                    for x in 0..m.w {
+                                        let (ix, iy) = (ox + x as i64, oy + y as i64);
+                                        if m.get(x, y) != 0
+                                            && ix >= 0
+                                            && iy >= 0
+                                            && (ix as usize) < full.w
+                                            && (iy as usize) < full.h
+                                        {
+                                            full.set(ix as usize, iy as usize, 255);
+                                        }
+                                    }
+                                }
+                                let s = Selection::combine(
+                                    d.selection.as_ref(),
+                                    full,
+                                    AreaKind::Text,
+                                    false,
+                                    op,
+                                );
+                                self.set_selection(s);
                             }
-                            None => self.message = Some("Can't render this text.".into()),
+                            _ => self.message = Some("Can't render this text.".into()),
                         }
-                        let (f, px, t) = (params.font, params.font_px, params.text.clone());
-                        self.params.font = f;
-                        self.params.font_px = px;
-                        self.params.text = t;
+                        self.params.font = params.font;
+                        self.params.font_px = params.font_px;
+                        self.params.text = params.text;
                     }
                     Some(false) => {}
-                    None => self.dialog = Some(Dialog::Text(at, params)),
+                    None => self.dialog = Some(Dialog::Text(at, op, params)),
                 }
             }
             Some(Dialog::WandOptions) => {
@@ -1546,10 +1747,7 @@ impl App {
                         ui.radio_value(&mut self.tools.wand_hsv, false, "RGB");
                         ui.radio_value(&mut self.tools.wand_hsv, true, "HSV");
                     });
-                    ui.checkbox(
-                        &mut self.tools.wand_unifold,
-                        "Unifold (connected region only)",
-                    );
+                    ui.checkbox(&mut self.tools.wand_unifold, "Contiguous (\"Unifold\")");
                     close =
                         ui.button("OK").clicked() || ui.input(|i| i.key_pressed(egui::Key::Enter));
                 });
@@ -1591,17 +1789,31 @@ impl App {
     }
 
     fn shortcuts(&mut self, ctx: &egui::Context) {
-        if self.dialog.is_some() {
+        let typing = ctx.egui_wants_keyboard_input();
+        if !matches!(self.dialog, None | Some(Dialog::Op(..))) || typing {
             return;
         }
         let cmd = ctx.input_mut(|i| {
             use egui::{Key, KeyboardShortcut as K, Modifiers as M};
+            let cs = M::COMMAND | M::SHIFT;
             [
+                (K::new(cs, Key::Z), Cmd::Redo),
+                (K::new(cs, Key::I), Cmd::InvertSelection),
+                (K::new(cs, Key::S), Cmd::SaveAs),
                 (K::new(M::COMMAND, Key::O), Cmd::Open),
                 (K::new(M::COMMAND, Key::N), Cmd::New),
                 (K::new(M::COMMAND, Key::S), Cmd::Save),
                 (K::new(M::COMMAND, Key::Z), Cmd::Undo),
+                (K::new(M::COMMAND, Key::Y), Cmd::Redo),
+                (K::new(M::COMMAND, Key::A), Cmd::SelectAll),
+                (K::new(M::COMMAND, Key::D), Cmd::SelectNone),
+                (K::new(M::COMMAND, Key::C), Cmd::Copy),
+                (K::new(M::COMMAND, Key::V), Cmd::Paste),
+                (K::new(M::COMMAND, Key::Num0), Cmd::ZoomFit),
                 (K::new(M::COMMAND, Key::Num1), Cmd::Zoom(4)),
+                (K::new(M::COMMAND, Key::Equals), Cmd::ZoomIn),
+                (K::new(M::COMMAND, Key::Plus), Cmd::ZoomIn),
+                (K::new(M::COMMAND, Key::Minus), Cmd::ZoomOut),
             ]
             .into_iter()
             .find(|(k, _)| i.consume_shortcut(k))
@@ -1610,28 +1822,22 @@ impl App {
         if let Some(c) = cmd {
             self.invoke(c, ctx);
         }
-        // Ctrl + wheel (and pinch) step through the zoom levels. egui reports
-        // them as a zoom factor spread over several frames: take one step per
-        // gesture, then wait until it ends.
-        let zd = ctx.input(|i| i.zoom_delta());
-        let mut scroll: f32 = 0.0;
-        if zd == 1.0 {
-            self.zoom_latched = false;
-            self.zoom_accum = 0.0;
-        } else if !self.zoom_latched {
-            self.zoom_accum += zd.ln();
-            if self.zoom_accum.abs() > 0.05 {
-                scroll = self.zoom_accum.signum();
-                self.zoom_latched = true;
+        // Single-key tool shortcuts.
+        if self.dialog.is_none() {
+            let tool = ctx.input(|i| {
+                if i.modifiers.any() {
+                    return None;
+                }
+                Tool::ALL.into_iter().find(|t| i.key_pressed(t.key()))
+            });
+            if let Some(t) = tool {
+                self.tools.tool = t;
             }
         }
-        if scroll != 0.0
-            && let Some(d) = self.doc()
-        {
-            let k = ZOOMS.iter().position(|z| *z >= d.zoom).unwrap_or(4) as i32;
-            let k = (k + scroll.signum() as i32).clamp(0, ZOOMS.len() as i32 - 1);
-            d.zoom = ZOOMS[k as usize];
-            d.mark_stale();
+        // Ctrl + wheel (and pinch) zoom smoothly.
+        let zd = ctx.input(|i| i.zoom_delta());
+        if zd != 1.0 {
+            self.zoom_by(zd);
         }
         let dropped: Vec<egui::DroppedFile> = ctx.input(|i| i.raw.dropped_files.clone());
         for f in dropped {
@@ -1650,6 +1856,62 @@ impl App {
             self.handle_picked(p);
         }
     }
+
+    fn tabs(&mut self, ui: &mut egui::Ui) {
+        let (mut close, mut switch) = (None, None);
+        ui.horizontal(|ui| {
+            for (i, d) in self.docs.iter().enumerate() {
+                let active = i == self.active;
+                egui::Frame::new()
+                    .fill(if active {
+                        ui.visuals().selection.bg_fill.gamma_multiply(0.35)
+                    } else {
+                        Color32::TRANSPARENT
+                    })
+                    .corner_radius(4.0)
+                    .inner_margin(egui::Margin::symmetric(6, 2))
+                    .show(ui, |ui| {
+                        ui.horizontal(|ui| {
+                            if ui.selectable_label(active, d.title()).clicked() && !active {
+                                switch = Some(i);
+                            }
+                            if ui.small_button("×").on_hover_text("Close").clicked() {
+                                close = Some(i);
+                            }
+                        });
+                    });
+            }
+        });
+        if let Some(i) = switch {
+            self.switch_to(i);
+        }
+        if let Some(i) = close {
+            self.docs.remove(i);
+            let a = if i < self.active {
+                self.active - 1
+            } else {
+                self.active
+            };
+            self.switch_to(a.min(self.docs.len().saturating_sub(1)));
+        }
+    }
+}
+
+fn edge_combo(ui: &mut egui::Ui, e: &mut tools::Edge, label: &str) {
+    ui.label(label);
+    egui::ComboBox::from_id_salt(label)
+        .width(80.0)
+        .selected_text(e.name())
+        .show_ui(ui, |ui| {
+            for v in [
+                tools::Edge::Sharp,
+                tools::Edge::Low,
+                tools::Edge::Medium,
+                tools::Edge::High,
+            ] {
+                ui.selectable_value(e, v, v.name());
+            }
+        });
 }
 
 fn item(
@@ -1677,13 +1939,18 @@ fn check(ui: &mut egui::Ui, label: &str, on: bool, cmd: Cmd, chosen: &mut Option
     }
 }
 
-fn menu_item(ui: &mut egui::Ui, m: &MenuItem, chosen: &mut Option<Cmd>) {
+fn menu_item(
+    ui: &mut egui::Ui,
+    m: &MenuItem,
+    enabled: &dyn Fn(Cmd) -> bool,
+    chosen: &mut Option<Cmd>,
+) {
     match m {
-        MenuItem::Cmd(l, c) => item(ui, l, None, *c, true, chosen),
+        MenuItem::Cmd(l, c, k) => item(ui, l, *k, *c, enabled(*c), chosen),
         MenuItem::Sub(l, items) => {
             ui.menu_button(*l, |ui| {
                 for i in items {
-                    menu_item(ui, i, chosen);
+                    menu_item(ui, i, enabled, chosen);
                 }
             });
         }
@@ -1696,23 +1963,12 @@ fn menu_item(ui: &mut egui::Ui, m: &MenuItem, chosen: &mut Option<Cmd>) {
 impl eframe::App for App {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         let ctx = ui.ctx().clone();
+        self.popup_was_open = ctx.any_popup_open();
         self.poll_job(&ctx);
-        self.poll_pen(&ctx);
-        // Changing the area type ends area entry or painting; a pending
-        // command restarts with the new type.
-        if self.tools.area != self.last_area {
-            self.last_area = self.tools.area;
-            match &self.state {
-                State::Select(p) | State::Pen(p, _) => {
-                    let p = p.clone();
-                    self.reset_area();
-                    self.begin(p.cmd, p.params);
-                }
-                State::Idle => self.reset_area(),
-                _ => {}
-            }
-        }
+        self.ensure_brush();
+        self.poll_brush(&ctx);
         self.shortcuts(&ctx);
+        self.update_preview(&ctx);
 
         let title = match self.docs.get(self.active) {
             Some(d) => format!("Picture Man — {}", d.title()),
@@ -1721,53 +1977,42 @@ impl eframe::App for App {
         ctx.send_viewport_cmd(egui::ViewportCommand::Title(title));
 
         egui::Panel::top("menu").show(ui, |ui| self.menu_bar(ui));
+        if !self.docs.is_empty() {
+            egui::Panel::top("options").show(ui, |ui| {
+                ui.add_space(3.0);
+                self.options_bar(ui);
+                ui.add_space(3.0);
+            });
+        }
         egui::Panel::bottom("status").show(ui, |ui| self.status_bar(ui));
         if self.show_toolbox {
             egui::Panel::left("toolbox")
                 .resizable(false)
                 .show(ui, |ui| {
-                    tools::toolbox(ui, &self.assets, &mut self.tools);
-                    ui.add_space(10.0);
-                    if ui.button("Magic wand…").clicked() {
-                        self.dialog = Some(Dialog::WandOptions);
+                    ui.add_space(4.0);
+                    let has_sel = self.selection().is_some();
+                    if let ToolboxAction::Deselect =
+                        tools::toolbox(ui, &self.assets, &mut self.tools, has_sel)
+                    {
+                        self.set_selection(None);
                     }
                 });
         }
         egui::CentralPanel::default().show(ui, |ui| {
-            if self.docs.len() > 1 {
-                ui.horizontal(|ui| {
-                    let (mut close, mut switch) = (None, None);
-                    for (i, d) in self.docs.iter().enumerate() {
-                        if ui.selectable_label(i == self.active, d.title()).clicked()
-                            && i != self.active
-                        {
-                            switch = Some(i);
-                        }
-                        if i == self.active && ui.small_button("✕").clicked() {
-                            close = Some(i);
-                        }
-                    }
-                    if let Some(i) = switch {
-                        self.active = i;
-                        self.reset_area();
-                    }
-                    if let Some(i) = close {
-                        self.docs.remove(i);
-                        self.active = self.active.min(self.docs.len().saturating_sub(1));
-                        self.reset_area();
-                    }
+            if self.docs.is_empty() {
+                ui.centered_and_justified(|ui| {
+                    ui.label(
+                        RichText::new("Open an image (Ctrl+O) or drop files here")
+                            .weak()
+                            .size(16.0),
+                    );
                 });
-                ui.separator();
+                return;
             }
+            self.tabs(ui);
+            ui.separator();
             let mode = match &self.state {
-                // With an area tool, an area can be outlined before choosing
-                // the command.
-                State::Idle if !matches!(self.tools.area, Area::Whole | Area::Pen) => {
-                    Mode::Select(self.tools.area)
-                }
-                State::Idle => Mode::Idle,
-                State::Select(_) => Mode::Select(self.tools.area),
-                State::Pen(..) => Mode::Pen,
+                State::Idle => Mode::Tool(self.tools.tool),
                 State::Rubber { roi, from, to, .. } => Mode::Rubber {
                     roi: egui::Rect::from_min_size(
                         pos2(roi.x as f32, roi.y as f32),
@@ -1782,30 +2027,32 @@ impl eframe::App for App {
                     orig: vec2(pl.frag.img.w as f32, pl.frag.img.h as f32),
                 },
             };
-            let phase = canvas::march_phase(ctx.input(|i| i.time), self.tools.animate);
-            let overlay = Overlay {
-                tex: self.ants.as_ref().map(|t| t[phase].id()),
-                text: match (&self.text_ants, &self.sel.shape) {
-                    (Some(t), Some(Shape::Text(m, at))) => Some((
-                        t[phase].id(),
-                        egui::Rect::from_min_size(*at, vec2(m.w as f32, m.h as f32)),
-                    )),
-                    _ => None,
-                },
+            let previewing = matches!(self.dialog, Some(Dialog::Op(..))) && self.show_preview;
+            let display = if previewing {
+                self.preview.tex.as_ref().map(|t| t.id())
+            } else {
+                None
             };
-            if (self.ants.is_some() || self.text_ants.is_some()) && self.tools.animate {
-                ctx.request_repaint_after(std::time::Duration::from_millis(canvas::MARCH_MS));
-            }
             let tools = &self.tools;
-            let sel = &mut self.sel;
+            let it = &mut self.interaction;
             let events = match self.docs.get_mut(self.active) {
-                Some(d) => canvas::canvas(ui, d, sel, mode, tools, overlay),
-                None => {
-                    ui.centered_and_justified(|ui| {
-                        ui.label(RichText::new("Open an image (Ctrl+O) or drop files here").weak());
-                    });
-                    Vec::new()
+                Some(d) => {
+                    let selection = d.selection.take();
+                    let ev = canvas::canvas(
+                        ui,
+                        d,
+                        it,
+                        mode,
+                        tools,
+                        View {
+                            selection: selection.as_ref(),
+                            display,
+                        },
+                    );
+                    d.selection = selection;
+                    ev
                 }
+                None => Vec::new(),
             };
             self.handle_canvas(events);
         });

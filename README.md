@@ -35,17 +35,21 @@ The web version builds with [trunk](https://trunkrs.dev):
 
 ## Using it
 
-As in the original, every operation can work on the whole image, on a
-selected area, or through the pen:
+1. **Select** with a tool from the toolbox: rectangle (M), ellipse (E),
+   polygon (P), lasso (L), magic wand (W) or text (T). The selection stays
+   until you clear it: Shift adds to it, Alt subtracts, dragging inside moves
+   it; Select ▸ All / None / Invert (Ctrl+A, Ctrl+D, Ctrl+Shift+I). The
+   "whole image" button (or Esc) clears it.
+2. **Apply** any command from Image, Adjust, Fill or Filters: it works on the
+   selection — with the soft edge chosen under Edge — or on the whole image
+   when nothing is selected. Dialogs preview the result live on the image.
+3. **Paint with any operation** (Picture Man's signature): pick the brush
+   (B), then choose any Adjust, Fill or Filters command — it becomes what the
+   brush paints with. The right button restores the original; painting stays
+   inside the selection.
 
-1. Pick an area type in the toolbox (whole image, rectangle, ellipse,
-   polygon, text, magic wand, freehand, pen) and an edge (sharp or smooth).
-2. Outline the area, then choose a command: it applies inside the area.
-   Or, the 1993 way: choose the command first, outline the area, then
-   double-click **inside** it to process the interior or **outside** to
-   process everything else.
-3. With the pen, choose a command and paint with it; the right button
-   restores the original.
+In 1.55 the order was the other way round — command first, then the area,
+then a double-click inside or outside it. "Outside" is Select ▸ Invert now.
 
 Settings are kept in `pictureman.ini` (same sections and keys as PMAN.INI).
 

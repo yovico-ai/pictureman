@@ -6,7 +6,6 @@ use std::sync::Arc;
 use eframe::egui::{self, Color32};
 
 use super::commands::Cmd;
-use super::tools::Area;
 use crate::core::{Image, Mask, MsRand, Rect, Rgb};
 use crate::ops::fill::{Fluctuation, GradientKind, PatchMode, RadialShape};
 use crate::ops::filters::FilterSize;
@@ -33,7 +32,7 @@ pub struct OpParams {
     /// TV dialog in user terms: contrast −50..50, brightness and color −255..255.
     pub tv: (i32, i32, i32),
     pub linear: ColorMap,
-    pub gamma_pos: i32,
+    pub gamma: f64,
     pub gamma_rgb: [bool; 3],
     pub fluct: Fluctuation,
     pub grad: (Rgb, Rgb),
@@ -61,7 +60,7 @@ impl Default for OpParams {
             filter: FilterSize::default(),
             tv: (0, 0, 0),
             linear: ColorMap::default(),
-            gamma_pos: tune::GAMMA_SLIDER_DEFAULT,
+            gamma: 1.0,
             gamma_rgb: [true; 3],
             fluct: Fluctuation::default(),
             // PMAN.INI [COLOR] LEFT*/RIGHT* as shipped.
@@ -84,12 +83,26 @@ impl Default for OpParams {
     }
 }
 
+/// What an operation is applied to.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Scope {
+    Whole,
+    /// A selection; `elliptic` when it was made with the ellipse tool (the
+    /// radial gradient and Rubber follow its shape).
+    Selection {
+        elliptic: bool,
+    },
+    /// The brush's square, painting.
+    Brush {
+        circle: bool,
+    },
+}
+
 /// Context an operation may need besides its parameters.
 pub struct Ctx<'a> {
-    pub area: Area,
+    pub scope: Scope,
     /// Selected pixels (non-zero), full image size.
     pub mask: &'a Mask,
-    pub circle_pen: bool,
     pub rng: &'a mut MsRand,
     /// Last backup (for Erase).
     pub backup: Option<&'a Image>,
@@ -131,16 +144,33 @@ pub fn needs_dialog(cmd: Cmd) -> bool {
 /// Ops whose result is shown live in the dialog.
 pub fn has_preview(cmd: Cmd) -> bool {
     use Cmd::*;
-    matches!(
-        cmd,
-        RgbTv
-            | RgbLinear
-            | Gamma
-            | Deformations
-            | GradientV
-            | GradientH
-            | GradientRadial
-            | FillFluctuated
+    needs_dialog(cmd)
+        && !matches!(
+            cmd,
+            Size | New | Paste | PasteFrom | Rotate | MagicWandOptions
+        )
+}
+
+/// Identifies the parameters that matter for a preview, so it is only
+/// recomputed when something changed.
+pub fn preview_key(cmd: Cmd, p: &OpParams) -> String {
+    format!(
+        "{cmd:?}|{:?}|{:?}|{:?}|{}|{:?}|{:?}|{:?}|{:?}|{:?}|{}|{}|{}|{:?}",
+        p.color,
+        p.filter,
+        p.tv,
+        p.gamma,
+        p.gamma_rgb,
+        p.fluct,
+        p.grad,
+        p.linear,
+        p.mirror,
+        p.distortion,
+        p.dsize,
+        p.pattern
+            .as_ref()
+            .map_or(0, |a| std::sync::Arc::as_ptr(a) as usize),
+        p.rubber,
     )
 }
 
@@ -156,7 +186,7 @@ pub fn prepare(cmd: Cmd, p: &mut OpParams, img: Option<&Image>) {
         | Mosaic | FacetedGlass | Scatter => p.filter = FilterSize::default(),
         RgbTv => p.tv = (0, 0, 0),
         RgbLinear => p.linear = ColorMap::default(),
-        Gamma => p.gamma_pos = tune::GAMMA_SLIDER_DEFAULT,
+        Gamma => p.gamma = 1.0,
         Rotate => p.angle = 90.0,
         Size => {
             if let Some(i) = img {
@@ -235,9 +265,10 @@ pub fn dialog_ui(ui: &mut egui::Ui, cmd: Cmd, p: &mut OpParams, env: &mut Dialog
         }
         Gamma => {
             ui.add(
-                egui::Slider::new(&mut p.gamma_pos, 0..=255)
-                    .custom_formatter(|v, _| format!("{:.2}", tune::gamma_from_slider(v as i32)))
-                    .text("gamma (0.25 … 4.0)"),
+                egui::Slider::new(&mut p.gamma, 0.25..=4.0)
+                    .logarithmic(true)
+                    .fixed_decimals(2)
+                    .text("gamma"),
             );
             ui.horizontal(|ui| {
                 ui.checkbox(&mut p.gamma_rgb[0], "R");
@@ -374,11 +405,11 @@ pub fn text_dialog_ui(ui: &mut egui::Ui, p: &mut OpParams, fonts: &[FontEntry]) 
     );
 }
 
-fn area_kind<'a>(area: Area, mask: &'a Mask) -> tune::AreaKind<'a> {
-    match area {
-        Area::Whole => tune::AreaKind::Whole,
-        Area::Pen => tune::AreaKind::Pen,
-        _ => tune::AreaKind::Mask(mask),
+fn area_kind(scope: Scope, mask: &Mask) -> tune::AreaKind<'_> {
+    match scope {
+        Scope::Whole => tune::AreaKind::Whole,
+        Scope::Brush { .. } => tune::AreaKind::Pen,
+        Scope::Selection { .. } => tune::AreaKind::Mask(mask),
     }
 }
 
@@ -461,18 +492,18 @@ pub fn apply(cmd: Cmd, p: &OpParams, src: &Image, roi: Rect, ctx: &mut Ctx) -> I
         RgbLinear => tune::rgb_control(src, roi, &p.linear),
         Gamma => {
             let [r, g, b] = p.gamma_rgb;
-            tune::gamma(src, roi, tune::gamma_from_slider(p.gamma_pos), r, g, b)
+            tune::gamma(src, roi, p.gamma, r, g, b)
         }
-        Expand => tune::expand(src, roi, area_kind(ctx.area, ctx.mask)),
-        Equalization => tune::equalize(src, roi, area_kind(ctx.area, ctx.mask)),
+        Expand => tune::expand(src, roi, area_kind(ctx.scope, ctx.mask)),
+        Equalization => tune::equalize(src, roi, area_kind(ctx.scope, ctx.mask)),
         FillPlain => fill::fill_plain(src, roi, p.color),
         FillFluctuated => fill::fill_fluctuated(src, roi, p.color, p.fluct, ctx.rng),
         GradientV => fill::gradient(src, roi, GradientKind::Vertical, p.grad.0, p.grad.1),
         GradientH => fill::gradient(src, roi, GradientKind::Horizontal, p.grad.0, p.grad.1),
         GradientRadial => {
-            let shape = match ctx.area {
-                Area::Ellipse => RadialShape::Ellipse,
-                Area::Pen if ctx.circle_pen => RadialShape::Circle,
+            let shape = match ctx.scope {
+                Scope::Selection { elliptic: true } => RadialShape::Ellipse,
+                Scope::Brush { circle: true } => RadialShape::Circle,
                 _ => RadialShape::Diagonal,
             };
             fill::gradient(src, roi, GradientKind::Radial(shape), p.grad.0, p.grad.1)
@@ -498,7 +529,14 @@ pub fn apply(cmd: Cmd, p: &OpParams, src: &Image, roi: Rect, ctx: &mut Ctx) -> I
         Deformations => transform::deform(src, roi, p.mirror, p.distortion, p.dsize),
         Rubber => {
             let (a, b) = p.rubber;
-            transform::rubber(src, roi, a, b, ctx.area == Area::Ellipse, p.color)
+            transform::rubber(
+                src,
+                roi,
+                a,
+                b,
+                ctx.scope == Scope::Selection { elliptic: true },
+                p.color,
+            )
         }
         Erase => match ctx.backup {
             Some(b) if b.w == src.w && b.h == src.h => b.clone(),
@@ -515,7 +553,7 @@ pub fn make_fragment(
     src: &Image,
     sel: &Mask,
     roi: Rect,
-    area: Area,
+    elliptic: bool,
 ) -> Option<Fragment> {
     Some(match cmd {
         Cmd::FlipH => transform::flip_fragment(src, sel, roi, false),
@@ -527,7 +565,7 @@ pub fn make_fragment(
         }
         Cmd::Rubber => {
             let (a, b) = p.rubber;
-            transform::rubber_fragment(src, sel, roi, a, b, area == Area::Ellipse)
+            transform::rubber_fragment(src, sel, roi, a, b, elliptic)
         }
         _ => return None,
     })
@@ -554,15 +592,4 @@ pub fn paste_fragment(img: Image, p: &OpParams) -> Fragment {
         img,
         alpha,
     }
-}
-
-/// Small copy of the image for dialog previews (at most `max` pixels on the
-/// longer side).
-pub fn thumbnail(img: &Image, max: usize) -> Image {
-    let s = (max as f64 / img.w.max(img.h) as f64).min(1.0);
-    let (w, h) = (
-        ((img.w as f64 * s) as usize).max(1),
-        ((img.h as f64 * s) as usize).max(1),
-    );
-    transform::resize(img, w, h)
 }

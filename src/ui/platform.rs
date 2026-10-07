@@ -78,32 +78,71 @@ impl Files {
         }
         #[cfg(target_arch = "wasm32")]
         {
-            let d = rfd::AsyncFileDialog::new()
-                .set_title(title)
-                .add_filter("Images", IMAGE_EXTS);
-            let tx = self.tx.clone();
-            wasm_bindgen_futures::spawn_local(async move {
-                let handles = if purpose == Purpose::Open {
-                    d.pick_files().await.unwrap_or_default()
-                } else {
-                    d.pick_file().await.into_iter().collect()
-                };
-                for h in handles {
-                    let bytes = h.read().await;
-                    let _ = tx.send(Picked {
-                        purpose,
-                        name: h.file_name(),
-                        path: None,
-                        bytes,
-                    });
-                }
-            });
+            let _ = title;
+            if let Err(e) = pick_in_browser(purpose, self.tx.clone()) {
+                let _ = self.tx.send(Picked {
+                    purpose,
+                    name: format!("(file picker: {e})"),
+                    path: None,
+                    bytes: Vec::new(),
+                });
+            }
         }
     }
 
     pub fn poll(&self) -> Vec<Picked> {
         self.rx.try_iter().collect()
     }
+}
+
+/// The browser's own file picker: a hidden `<input type=file>`. (rfd's web
+/// backend panicked when its element was already gone.)
+#[cfg(target_arch = "wasm32")]
+fn pick_in_browser(purpose: Purpose, tx: Sender<Picked>) -> Result<(), String> {
+    use eframe::wasm_bindgen::{JsCast, closure::Closure};
+    let document = web_sys::window()
+        .and_then(|w| w.document())
+        .ok_or("no document")?;
+    let input: web_sys::HtmlInputElement = document
+        .create_element("input")
+        .map_err(|e| format!("{e:?}"))?
+        .dyn_into()
+        .map_err(|_| "not an input")?;
+    input.set_type("file");
+    input.set_accept(
+        &IMAGE_EXTS
+            .iter()
+            .map(|e| format!(".{e}"))
+            .collect::<Vec<_>>()
+            .join(","),
+    );
+    input.set_multiple(purpose == Purpose::Open);
+    let el = input.clone();
+    let on_change = Closure::<dyn FnMut()>::new(move || {
+        let Some(files) = el.files() else { return };
+        for i in 0..files.length() {
+            let Some(file) = files.get(i) else { continue };
+            let tx = tx.clone();
+            wasm_bindgen_futures::spawn_local(async move {
+                let name = file.name();
+                let bytes = match wasm_bindgen_futures::JsFuture::from(file.array_buffer()).await {
+                    Ok(buf) => js_sys::Uint8Array::new(&buf).to_vec(),
+                    Err(_) => Vec::new(),
+                };
+                let _ = tx.send(Picked {
+                    purpose,
+                    name,
+                    path: None,
+                    bytes,
+                });
+            });
+        }
+    });
+    input.set_onchange(Some(on_change.as_ref().unchecked_ref()));
+    // The input lives as long as the closure; both are tiny.
+    on_change.forget();
+    input.click();
+    Ok(())
 }
 
 /// Offer `bytes` as a download named `name` (browser only).

@@ -4,6 +4,7 @@ use std::path::PathBuf;
 
 use eframe::egui::{self, ColorImage, TextureHandle, TextureOptions};
 
+use super::marquee::Selection;
 use crate::core::{Image, Rect};
 
 const UNDO_DEPTH: usize = 16;
@@ -15,6 +16,14 @@ pub struct Doc {
     pub path: Option<PathBuf>,
     pub img: Image,
     undo: Vec<Image>,
+    redo: Vec<Image>,
+    /// The current selection; `None` means the whole image.
+    pub selection: Option<Selection>,
+    /// Bumped whenever the pixels are replaced (not by painting), so cached
+    /// work such as the brush's prepared effect knows it is stale.
+    pub version: u64,
+    /// Zoom to fit the window on the next frame.
+    pub fit_pending: bool,
     /// The image as last loaded or saved, for File/Reload.
     pub saved: Option<Image>,
     pub modified: bool,
@@ -35,6 +44,10 @@ impl Doc {
             path,
             img,
             undo: Vec::new(),
+            redo: Vec::new(),
+            selection: None,
+            version: 0,
+            fit_pending: true,
             modified: false,
             zoom: 1.0,
             tex: None,
@@ -49,6 +62,23 @@ impl Doc {
             self.undo.remove(0);
         }
         self.undo.push(self.img.clone());
+        self.redo.clear();
+    }
+
+    pub fn can_undo(&self) -> bool {
+        !self.undo.is_empty()
+    }
+
+    pub fn can_redo(&self) -> bool {
+        !self.redo.is_empty()
+    }
+
+    pub fn redo(&mut self) {
+        if let Some(next) = self.redo.pop() {
+            let cur = std::mem::replace(&mut self.img, next);
+            self.undo.push(cur);
+            self.after_replace();
+        }
     }
 
     /// The most recent backup (what Undo would restore; used by Erase).
@@ -58,14 +88,28 @@ impl Doc {
 
     pub fn undo(&mut self) {
         if let Some(prev) = self.undo.pop() {
-            self.img = prev;
-            self.touch();
+            let cur = std::mem::replace(&mut self.img, prev);
+            self.redo.push(cur);
+            self.after_replace();
         }
     }
 
     /// Replace the pixels (after an operation) and mark the view stale.
     pub fn set_image(&mut self, img: Image) {
         self.img = img;
+        self.after_replace();
+    }
+
+    fn after_replace(&mut self) {
+        self.version += 1;
+        // A selection of another size no longer fits.
+        if self
+            .selection
+            .as_ref()
+            .is_some_and(|s| s.mask.w != self.img.w || s.mask.h != self.img.h)
+        {
+            self.selection = None;
+        }
         self.touch();
     }
 

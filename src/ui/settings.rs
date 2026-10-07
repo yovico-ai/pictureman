@@ -6,7 +6,7 @@ use std::fmt::Write;
 use std::path::PathBuf;
 
 use super::apply::OpParams;
-use super::tools::{Area, Brush, Edge, Tools};
+use super::tools::{Brush, Edge, Tool, Tools};
 
 pub const MAX_RECENT: usize = 8;
 
@@ -72,20 +72,29 @@ pub fn load(tools: &mut Tools, params: &mut OpParams) -> Loaded {
     let byte = |s: &str, k: &str| num(s, k).map(|v| v.clamp(0, 255) as u8);
     let flag = |s: &str, k: &str| num(s, k).map(|v| v != 0);
 
+    // FRAGMENT keeps the original's numbering; 0 (whole image) has no tool.
     if let Some(v) = num("MODE", "FRAGMENT") {
-        tools.area = match v {
-            1 => Area::Rect,
-            2 => Area::Ellipse,
-            3 => Area::Polygon,
-            4 => Area::Text,
-            5 => Area::Freehand,
-            6 => Area::MagicWand,
-            7 => Area::Pen,
-            _ => Area::Whole,
+        tools.tool = match v {
+            2 => Tool::Ellipse,
+            3 => Tool::Polygon,
+            4 => Tool::Text,
+            5 => Tool::Lasso,
+            6 => Tool::Wand,
+            7 => Tool::Brush,
+            8 => Tool::Eyedropper,
+            _ => Tool::Rect,
         };
     }
     if let Some(v) = num("MODE", "EDGE") {
         tools.edge = match v {
+            1 => Edge::Low,
+            2 => Edge::Medium,
+            3 => Edge::High,
+            _ => Edge::Sharp,
+        };
+    }
+    if let Some(v) = num("MODE", "BRUSHEDGE") {
+        tools.brush_edge = match v {
             1 => Edge::Low,
             2 => Edge::Medium,
             3 => Edge::High,
@@ -105,7 +114,6 @@ pub fn load(tools: &mut Tools, params: &mut OpParams) -> Loaded {
     }
     tools.wand_unifold = flag("MODE", "UNIFOLD").unwrap_or(tools.wand_unifold);
     tools.wand_hsv = flag("MODE", "RGBMATCH").map_or(tools.wand_hsv, |rgb| !rgb);
-    tools.preserve_mask = flag("MODE", "KEEPMASK").unwrap_or(tools.preserve_mask);
     tools.animate = flag("MODE", "ANIMATE").unwrap_or(tools.animate);
     tools.backup = flag("MODE", "BACKUP").unwrap_or(tools.backup);
     out.show_toolbox = flag("MODE", "TOOLBOX").unwrap_or(true);
@@ -166,15 +174,15 @@ pub fn serialize(
     recent: &[PathBuf],
 ) -> String {
     let mut s = String::from("; Picture Man settings\n[MODE]\n");
-    let area = match tools.area {
-        Area::Whole => 0,
-        Area::Rect => 1,
-        Area::Ellipse => 2,
-        Area::Polygon => 3,
-        Area::Text => 4,
-        Area::Freehand => 5,
-        Area::MagicWand => 6,
-        Area::Pen => 7,
+    let area = match tools.tool {
+        Tool::Rect => 1,
+        Tool::Ellipse => 2,
+        Tool::Polygon => 3,
+        Tool::Text => 4,
+        Tool::Lasso => 5,
+        Tool::Wand => 6,
+        Tool::Brush => 7,
+        Tool::Eyedropper => 8,
     };
     let edge = match tools.edge {
         Edge::Sharp => 0,
@@ -185,8 +193,8 @@ pub fn serialize(
     let b = |v: bool| v as u8;
     let _ = writeln!(
         s,
-        "FRAGMENT={area}\nEDGE={edge}\nPENSIZE={}",
-        tools.pen_size
+        "FRAGMENT={area}\nEDGE={edge}\nBRUSHEDGE={}\nPENSIZE={}",
+        tools.brush_edge as u8, tools.pen_size
     );
     let _ = writeln!(
         s,
@@ -196,10 +204,9 @@ pub fn serialize(
     );
     let _ = writeln!(
         s,
-        "UNIFOLD={}\nRGBMATCH={}\nKEEPMASK={}",
+        "UNIFOLD={}\nRGBMATCH={}",
         b(tools.wand_unifold),
-        b(!tools.wand_hsv),
-        b(tools.preserve_mask)
+        b(!tools.wand_hsv)
     );
     let _ = writeln!(
         s,
@@ -258,7 +265,7 @@ mod tests {
     #[test]
     fn round_trip() {
         let t = Tools {
-            area: Area::Pen,
+            tool: Tool::Brush,
             edge: Edge::High,
             color: [1, 2, 3],
             wand_hsv: true,

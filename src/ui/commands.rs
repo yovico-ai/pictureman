@@ -1,5 +1,5 @@
-//! The command set and menu tree, mirroring PMAN.EXE's MENU resource.
-//! Discriminants are the original WM_COMMAND IDs.
+//! The command set and the menus. Discriminants are the original
+//! WM_COMMAND IDs where the command existed in 1.55 (300+ are new).
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[repr(u16)]
@@ -14,7 +14,17 @@ pub enum Cmd {
     Exit = 116,
     // Edit
     Undo = 121,
+    Redo = 300,
     Erase = 162,
+    Copy = 106,
+    Paste = 119,
+    PasteFrom = 117,
+    // Select
+    SelectAll = 301,
+    SelectNone = 302,
+    InvertSelection = 303,
+    MagicWandOptions = 231,
+    // Image (Transformation)
     Size = 102,
     Clip = 108,
     Move = 167,
@@ -23,11 +33,13 @@ pub enum Cmd {
     Rubber = 228,
     Deformations = 141,
     Rotate = 137,
+    // Adjust (Tune)
     RgbTv = 104,
     RgbLinear = 105,
     Gamma = 143,
     Expand = 154,
     Equalization = 144,
+    // Fill area
     FillPlain = 153,
     FillFluctuated = 282,
     GradientV = 221,
@@ -39,6 +51,7 @@ pub enum Cmd {
     PatchFull = 155,
     PatchH = 156,
     PatchV = 157,
+    // Filters (Processing)
     Smoothing = 107,
     Sharpening = 122,
     HeavySharpening = 123,
@@ -52,18 +65,14 @@ pub enum Cmd {
     Mosaic = 132,
     FacetedGlass = 133,
     Scatter = 134,
-    Copy = 106,
-    Paste = 119,
-    PasteFrom = 117,
     // View
     Zoom(i8) = 200,
+    ZoomIn = 304,
+    ZoomOut = 305,
+    ZoomFit = 306,
     AnimateSelection = 168,
     Toolbox = 219,
-    // Options
-    PickColor = 277,
-    MagicWandOptions = 231,
     CreateBackup = 138,
-    PreserveMask = 232,
     // Help
     About = 113,
 }
@@ -73,10 +82,8 @@ impl Cmd {
     pub fn needs_image(self) -> bool {
         self.is_image_op() || matches!(self, Cmd::Copy | Cmd::Paste | Cmd::PasteFrom | Cmd::Size)
     }
-}
 
-impl Cmd {
-    /// Does this command operate on (a selected area of) the image?
+    /// Does this command change the image (in the selection)?
     pub fn is_image_op(self) -> bool {
         use Cmd::*;
         matches!(
@@ -121,23 +128,28 @@ impl Cmd {
         )
     }
 
+    /// Can the brush paint with it?
+    pub fn paintable(self) -> bool {
+        self.is_image_op() && !matches!(self, Cmd::Size | Cmd::Clip | Cmd::Rotate)
+    }
+
     pub fn title(self) -> &'static str {
         use Cmd::*;
         match self {
             Size => "Size",
-            Clip => "Clip",
+            Clip => "Crop to selection",
             Move => "Move",
             FlipH => "Flip horizontal",
             FlipV => "Flip vertical",
             Rubber => "Rubber",
             Deformations => "Deformations",
             Rotate => "Rotate",
-            RgbTv => "RGB control (TV)",
+            RgbTv => "Brightness / contrast (TV)",
             RgbLinear => "Linear grey/color map",
             Gamma => "Gamma correction",
             Expand => "Expand",
             Equalization => "Equalization",
-            FillPlain => "Fill with color",
+            FillPlain => "Color",
             FillFluctuated => "Fluctuated color",
             GradientV => "Vertical gradient",
             GradientH => "Horizontal gradient",
@@ -161,11 +173,11 @@ impl Cmd {
             Mosaic => "Mosaic",
             FacetedGlass => "Faceted glass",
             Scatter => "Scatter",
-            Erase => "Erase",
+            Erase => "Revert area",
             Copy => "Copy",
             Paste => "Paste",
             PasteFrom => "Paste from file",
-            New => "New image parameters",
+            New => "New image",
             MagicWandOptions => "Magic wand options",
             _ => "",
         }
@@ -173,99 +185,127 @@ impl Cmd {
 }
 
 pub enum MenuItem {
-    Cmd(&'static str, Cmd),
+    /// Label, command, keyboard shortcut text.
+    Cmd(&'static str, Cmd, Option<&'static str>),
     Sub(&'static str, Vec<MenuItem>),
     Sep,
 }
 
-use MenuItem::{Cmd as C, Sep, Sub};
+use MenuItem::{Sep, Sub};
 
-/// The Edit menu, as in the original (the © marks the authors' own
-/// algorithms in 1.55's menu).
-pub fn edit_menu() -> Vec<MenuItem> {
+fn c(label: &'static str, cmd: Cmd) -> MenuItem {
+    MenuItem::Cmd(label, cmd, None)
+}
+
+fn k(label: &'static str, cmd: Cmd, key: &'static str) -> MenuItem {
+    MenuItem::Cmd(label, cmd, Some(key))
+}
+
+/// The image menus. The original's Edit menu held everything; it is split
+/// the usual way here, keeping the 1.55 command names (© marks the authors'
+/// own algorithms, as in 1.55's menu).
+pub fn image_menus() -> Vec<(&'static str, Vec<MenuItem>)> {
     use Cmd::*;
     vec![
-        C("Undo", Undo),
-        C("Erase", Erase),
-        Sep,
-        Sub(
-            "Transformation",
+        (
+            "Edit",
             vec![
-                C("Size…", Size),
-                C("Clip", Clip),
-                C("Move", Move),
-                Sub("Flip", vec![C("Horizontal", FlipH), C("Vertical", FlipV)]),
-                C("Rubber", Rubber),
-                C("Deformations…", Deformations),
-                C("Rotate…", Rotate),
+                k("Undo", Undo, "Ctrl+Z"),
+                k("Redo", Redo, "Ctrl+Y"),
+                Sep,
+                k("Copy", Copy, "Ctrl+C"),
+                k("Paste", Paste, "Ctrl+V"),
+                c("Paste from…", PasteFrom),
+                Sep,
+                c("Revert area", Erase),
             ],
         ),
-        Sub(
-            "Tune",
+        (
+            "Select",
             vec![
-                Sub(
-                    "RGB control",
-                    vec![C("TV…", RgbTv), C("Linear…", RgbLinear)],
-                ),
-                C("Gamma correction…", Gamma),
-                C("Expand", Expand),
-                C("Equalization", Equalization),
+                k("All", SelectAll, "Ctrl+A"),
+                k("None", SelectNone, "Ctrl+D"),
+                k("Invert", InvertSelection, "Ctrl+Shift+I"),
+                Sep,
+                c("Magic wand options…", MagicWandOptions),
             ],
         ),
-        Sub(
-            "Fill area",
+        (
+            "Image",
             vec![
-                Sub(
-                    "Color",
-                    vec![C("Plain", FillPlain), C("Fluctuated…", FillFluctuated)],
-                ),
+                c("Size…", Size),
+                c("Crop to selection", Clip),
+                Sep,
+                c("Rotate…", Rotate),
+                c("Flip horizontal", FlipH),
+                c("Flip vertical", FlipV),
+                c("Move", Move),
+                Sep,
+                c("Deformations…", Deformations),
+                c("Rubber", Rubber),
+            ],
+        ),
+        (
+            "Adjust",
+            vec![
+                c("Brightness / contrast (TV)…", RgbTv),
+                c("Linear grey/color map…", RgbLinear),
+                c("Gamma correction…", Gamma),
+                Sep,
+                c("Expand", Expand),
+                c("Equalization", Equalization),
+            ],
+        ),
+        (
+            "Fill",
+            vec![
+                c("Color", FillPlain),
+                c("Fluctuated color…", FillFluctuated),
                 Sub(
                     "Gradient",
                     vec![
-                        C("Vertical…", GradientV),
-                        C("Horizontal…", GradientH),
-                        C("Radial…", GradientRadial),
+                        c("Vertical…", GradientV),
+                        c("Horizontal…", GradientH),
+                        c("Radial…", GradientRadial),
                     ],
                 ),
                 Sub(
                     "Pattern",
                     vec![
-                        C("Tiled…", PatternTiled),
-                        C("Scaled…", PatternScaled),
-                        C("Fitted…", PatternFitted),
+                        c("Tiled…", PatternTiled),
+                        c("Scaled…", PatternScaled),
+                        c("Fitted…", PatternFitted),
                     ],
                 ),
                 Sub(
                     "Patch ©",
                     vec![
-                        C("Full", PatchFull),
-                        C("Horizontal", PatchH),
-                        C("Vertical", PatchV),
+                        c("Full", PatchFull),
+                        c("Horizontal", PatchH),
+                        c("Vertical", PatchV),
                     ],
                 ),
             ],
         ),
-        Sub(
-            "Processing",
+        (
+            "Filters",
             vec![
-                C("Smoothing…", Smoothing),
-                C("Sharpening", Sharpening),
-                C("Heavy sharpening", HeavySharpening),
-                C("Spot removing…", SpotRemoving),
-                C("Minimum…", Minimum),
-                C("Maximum…", Maximum),
-                C("Hand drawing ©…", HandDrawing),
-                C("Cleaning background…", CleaningBackground),
-                C("Contour outlining", ContourOutlining),
-                C("Emboss", Emboss),
-                C("Mosaic…", Mosaic),
-                C("Faceted glass ©…", FacetedGlass),
-                C("Scatter…", Scatter),
+                c("Smoothing…", Smoothing),
+                c("Sharpening", Sharpening),
+                c("Heavy sharpening", HeavySharpening),
+                c("Spot removing…", SpotRemoving),
+                c("Minimum…", Minimum),
+                c("Maximum…", Maximum),
+                Sep,
+                c("Hand drawing ©…", HandDrawing),
+                c("Cleaning background…", CleaningBackground),
+                c("Contour outlining", ContourOutlining),
+                c("Emboss", Emboss),
+                Sep,
+                c("Mosaic…", Mosaic),
+                c("Faceted glass ©…", FacetedGlass),
+                c("Scatter…", Scatter),
             ],
         ),
-        Sep,
-        C("Copy", Copy),
-        C("Paste", Paste),
-        C("Paste from…", PasteFrom),
     ]
 }

@@ -4,3 +4,6 @@
 pub mod core;
 pub mod formats;
 pub mod ops;
+pub mod selection;
+pub mod text;
+pub mod ui;

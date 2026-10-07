@@ -1,0 +1,13 @@
+Picture Man 1.55 was written in 1991-1993 by Igor 'Potapov' Plotnikov,
+Mike Kuznetsov and Alex Bobkov (Potapov WORKS, STOIK Ltd.).
+
+This repository is a rebuild by Igor Plotnikov, one of the original authors.
+No original source code survived; the algorithms were recovered from the
+1.55 shareware binaries.
+
+The artwork in assets/ (toolbox bitmaps, logo, icons, cursors) and the text
+in re/manual-1.55.txt and re/resources/ come from the original 1.55 release
+and are included by one of its authors.
+
+The program bundles the Ubuntu and Hack fonts through the
+epaint_default_fonts crate, under their own licenses.

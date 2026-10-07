@@ -1,0 +1,167 @@
+99	PMAN.HLP
+100	Picture Man v.1.55
+101	Open Source
+102	Select Target
+103	File %s exists.Overwrite it ?
+104	Can't open file%s
+105	File %sis not a valid .%s file.
+106	Unsupported .%s sub format,%s
+107	Error in image file structure,%s
+108	Not enough memory available.
+109	Not enough disk free space.
+110	Can't get info about file%s
+111	Incorrect path.
+128	5/12  CGA 640x200
+129	35/48 EGA 640x350
+130	1/1   VGA 640x480
+131	5/6  MCGA 320x200
+132	16/9  VGA 360x480
+133	5/6   VGA 640x400
+134	1/1   VGA 800x600
+135	Error accessing temporary file.
+136	Operation cancelled by user.
+137	Incorrect parameters.
+138	Unknown error.
+139	View target window must be opened !!
+140	Preparing palette...
+141	Preparing bitmap...
+142	Converting...
+143	Error during printing...
+112	Source: 
+113	Target: 
+114	Path: 
+115	Type: 
+116	Yes
+117	No
+118	1
+119	4
+120	8
+121	24
+122	Grey
+123	Color
+124	None
+125	Optimised
+126	Default
+127	No change
+160	Correcting colors... 
+161	Can't save file. Use the "Convert" command.
+162	Sharpening... 
+163	File %s has changed. Save it?
+164	You run not the first instance of Picture Man. Be careful. Don't try multitasking with image processings and converters!!!
+165	Processing...
+166	Creating backup... 
+167	Calculating histogram... 
+168	Scanning image... 
+169	Reading file...
+170	1 b/p
+171	4 b/p uniform palette
+172	4 b/p optimised palette
+173	8 b/p uniform palette
+174	8 b/p optimised palette
+175	8 b/p grey
+208	4 b/p grey
+209	Hardware error
+210	Update embedding object?
+211	Unknown OLE protocol error
+212	You can't insert transformed area into an image in UNREGISTERED version. Although, you can place transformed area onto clipboard using Ctrl-Ins and then paste it. Registration is required to remove this restriction!
+176	24 b/p true color
+177	24 b/p 15 bit dithering
+178	No dithering
+179	Error difusion
+180	Bayer
+181	Elliptic concave mirror
+182	Elliptic convex mirror
+183	Cylindric concave mirror, vertical
+184	Cylindric convexe mirror, vertical
+185	left
+186	right
+187	top
+188	bottom
+189	center
+190	border
+191	Cylindric concave mirror, horizontal
+144	Clipping area... 
+145	Smoothing image...
+146	Area was selected
+147	Full RGB
+148	Palette only
+149	Preparing print file...
+150	Creating temporary file...
+151	You are working with unregistered version of Picture Man. Image too large!
+152	This  file  format  doesn't support  1bit  data. Use 'Color/Dither' command in 'Options' menu to change Bits/Pixel  parameter or choose another file format.
+153	This  file  format  doesn't support  4bit  data. Use 'Color/Dither' command in 'Options' menu to change Bits/Pixel  parameter or choose another file format.
+154	This  file  format  doesn't support  8bit  data. Use 'Color/Dither' command in 'Options' menu to change Bits/Pixel  parameter or choose another file format.
+155	This  file  format  doesn't support 24bit  data. Use 'Color/Dither' command in 'Options' menu to change Bits/Pixel  parameter or choose another file format.
+156	This file format doesn't support data with palette. Use 'Color/Dither' command in 'Options' menu to change palette options or choose another file format.
+157	This file format supports data only with standart palette. Use 'Color/Dither' command in 'Options' menu to change palette  options or choose another file format.
+158	This file format doesn't support data without palette. Use 'Color' command in 'Options/Dither' menu to change palette  options or choose another file format.
+159	Inserting fragment...
+192	Cylindric convex mirror, horizontal
+193	Horizontal wave
+194	Vertical wave
+195	Circular wave
+196	Preparing magic wand data...
+197	Creating new image...
+198	Whirlpool, clockwise
+199	Whirlpool, counterclockwise
+200	Pixels
+201	Inches
+202	Centimetres
+203	Format %s not supported!
+204	Press Shift + Left mouse button to indicate reference point!
+205	Designed by Potapov WORKS. Copyright (C) Potapov WORKS 1991-1992. Authors: I.'Potapov' Plotnikov, M.Kuznetsov, A.Bobkov. Made in Russia.
+206	Unsufficient memory to store backup!
+207	%s
+File already exists.
+
+Overwrite?
+512	1-bit (black/white)
+513	3-level grey
+514	4-level grey
+515	16-level grey
+516	16-color uniform palette
+517	16-color palette
+518	32-level grey
+519	64-level grey
+520	256-level grey
+521	6x6x6 uniform palette
+522	256-color palette
+523	Optimized palette
+524	15-bit truecolor
+525	Full truecolor
+526	None
+527	Error diffusion
+560	Truecolor
+528	Bayer
+529	Fatting
+530	Vertical 1
+531	Vertical 2
+532	Vertical 3
+533	Horizontal 1
+534	Horizontal 2
+535	Horizontal 3
+536	Angle
+537	Basket
+538	Crosses
+539	Diaginal 1
+540	Diagonal 2
+541	Diagonal 3
+542	Diagonal 4
+543	Flowers
+544	Grater
+545	Helix
+546	Squares
+0	TWAIN.DLL
+1	TWAIN Sample App
+1016	Sorry, could not find the TWAIN Source Manager (TWAIN.DLL).  Please copy the TWAIN Source Manager from your Program Disk to your Windows directory.
+1017	Sorry, no TWAIN Source found in the TWAIN directory.  Refer to your TWAIN Source installation instructions.
+1018	Sorry, there is not enough memory to Acquire.
+1019	Sorry the TWAIN Source %s is already in use.
+1020	Bummer, there is a TWAIN error!
+1021	Sorry, capability error has occurred.
+1022	Sorry, protocol error has occurred.
+1023	Sorry, bad value.
+1025	Sorry, DG DAT MSG is out of expected sequence.
+1026	Sorry, detailed error status returns success.
+1027	Sorry, could not get detailed Error Code.
+1028	Sorry, Unknown error code returned by DG_CONTROL, DAT_STATUS, MSG_GET.

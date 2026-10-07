@@ -1,0 +1,132 @@
+&File
+  &New...  [120]
+  &Open...  [101]
+  &Reload  [139]
+  &Grab...  [236]
+  ----
+  Acquire...  [235]
+  Select source...  [259]
+  ----
+  &Save  [118]
+  Save &As...  [114]
+  Conver&t...  [142]
+  &Print...  [115]
+  ----
+  E&xit  [116]
+&Edit
+  &Undo...  [121]
+  &Erase  [162]
+  ----
+  Transformation
+    &Size...  [102]
+    &Clip  [108]
+    M&ove  [167]
+    Flip
+      &Horizontal  [136]
+      &Vertical  [140]
+    &Rubber  [228]
+    &Deformations...  [141]
+    Ro&tate...  [137]
+  &Tune
+    &RGB control
+      &TV...  [104]
+      &Linear...  [105]
+    &Gamma correction...  [143]
+    E&xpand  [154]
+    &Equalization  [144]
+  &Fill area
+    &Color
+      &Plain  [153]
+      &Fluctuated...  [282]
+    &Gradient
+      &Vertical...  [221]
+      &Horizontal...  [222]
+      &Radial...  [223]
+    P&attern
+      &Tiled...  [224]
+      &Scaled...  [233]
+      &Fitted...  [234]
+    &Patch ©
+      &Full  [155]
+      &Horizontal  [156]
+      &Vertical  [157]
+  P&rocessing
+    &Smoothing...  [107]
+    S&harpening  [122]
+    Heavy sh&arpening  [123]
+    Spot &removing...  [124]
+    Mi&nimum...  [125]
+    Ma&ximum...  [126]
+    Han&d drawing ©...  [128]
+    &Cleaning background...  [129]
+    Contour &outlining  [130]
+    &Emboss  [131]
+    &Mosaic...  [132]
+    &Faceted glass ©...  [133]
+    Sca&tter...  [134]
+  ----
+  C&opy
+    Copy &truecolor  [106]
+    Copy &bitmap  [166]
+  &Paste  [119]
+  Paste fr&om...  [117]
+&View
+  Zoom &out
+    1:2  [201]
+    1:4  [202]
+    1:6  [203]
+    1:8  [204]
+  Zoom &in
+    2:1  [205]
+    4:1  [206]
+    6:1  [207]
+    8:1  [208]
+  Original Si&ze [&1:1]  [209]
+  ----
+  Color/dither &options...  [210]
+  &Monitor gamma...  [258]
+  &Repaint  [211]
+  &Use temporary bitmap  [161]
+  &Animate selection  [168]
+  ----
+  &Toolbox  [219]
+  Pro&gress indicator  [220]
+  Paint on &icon  [227]
+&Options
+  &Area
+    &Whole image  [145]
+    &Rectangle  [146]
+    &Ellipse  [147]
+    &Polygon  [148]
+    &Text  [158]
+    &Magic Wand  [160]
+    &Freehand  [159]
+    Pe&n  [163]
+  &Edge
+    &Sharp  [149]
+    Smooth &low  [150]
+    Smooth &medium  [151]
+    Smooth &high  [152]
+  &Pen/brush/line size
+    1(x1)  [212]
+    3(x3)  [213]
+    5(x5)  [214]
+    7(x7)  [215]
+    9(x9)  [249]
+    11(x11)  [216]
+  Pen/&brush type
+    &Square  [218]
+    &Circle  [217]
+  &Color
+    &Select...  [103]
+    &Pick up...  [277]
+  &Magic wand...  [231]
+  ----
+  Create &backup  [138]
+  &Preserve mask  [232]
+  Ac&quire Native format  [281]
+&Help
+  &Help on help...  [111]
+  &Index...  [112]
+  ----
+  &About...  [113]

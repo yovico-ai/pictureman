@@ -4,6 +4,16 @@
 
 pub type Rgb = [u8; 3];
 
+/// Largest image (in pixels) the program creates, loads or resizes to:
+/// 100 megapixels, 300 MB of pixel data. Everything that sizes a buffer
+/// from user input or file contents checks against it first.
+pub const MAX_PIXELS: usize = 100_000_000;
+
+/// `w × h` if it is a usable image size.
+pub fn checked_area(w: usize, h: usize) -> Option<usize> {
+    w.checked_mul(h).filter(|&n| n > 0 && n <= MAX_PIXELS)
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Image {
     pub w: usize,
@@ -13,7 +23,11 @@ pub struct Image {
 
 impl Image {
     pub fn new(w: usize, h: usize, fill: Rgb) -> Self {
-        Image { w, h, px: vec![fill; w * h] }
+        Image {
+            w,
+            h,
+            px: vec![fill; w * h],
+        }
     }
 
     #[inline]
@@ -43,13 +57,22 @@ impl Image {
     }
 
     pub fn rect(&self) -> Rect {
-        Rect { x: 0, y: 0, w: self.w, h: self.h }
+        Rect {
+            x: 0,
+            y: 0,
+            w: self.w,
+            h: self.h,
+        }
     }
 
     pub fn from_rgb_image(img: &image::RgbImage) -> Self {
         let (w, h) = img.dimensions();
         let px = img.pixels().map(|p| p.0).collect();
-        Image { w: w as usize, h: h as usize, px }
+        Image {
+            w: w as usize,
+            h: h as usize,
+            px,
+        }
     }
 
     pub fn to_rgb_image(&self) -> image::RgbImage {
@@ -61,7 +84,8 @@ impl Image {
     pub fn crop(&self, r: Rect) -> Image {
         let mut out = Image::new(r.w, r.h, [0; 3]);
         for y in 0..r.h {
-            out.row_mut(y).copy_from_slice(&self.row(r.y + y)[r.x..r.x + r.w]);
+            out.row_mut(y)
+                .copy_from_slice(&self.row(r.y + y)[r.x..r.x + r.w]);
         }
         out
     }
@@ -94,10 +118,18 @@ pub struct Mask {
 
 impl Mask {
     pub fn empty(w: usize, h: usize) -> Self {
-        Mask { w, h, data: vec![0; w * h] }
+        Mask {
+            w,
+            h,
+            data: vec![0; w * h],
+        }
     }
     pub fn full(w: usize, h: usize) -> Self {
-        Mask { w, h, data: vec![255; w * h] }
+        Mask {
+            w,
+            h,
+            data: vec![255; w * h],
+        }
     }
     #[inline]
     pub fn get(&self, x: usize, y: usize) -> u8 {
@@ -126,7 +158,12 @@ impl Mask {
         if x0 == usize::MAX {
             Rect::default()
         } else {
-            Rect { x: x0, y: y0, w: x1 - x0, h: y1 - y0 }
+            Rect {
+                x: x0,
+                y: y0,
+                w: x1 - x0,
+                h: y1 - y0,
+            }
         }
     }
 }
@@ -192,7 +229,11 @@ mod tests {
     fn soft_mask_blends() {
         let mut a = Image::new(1, 1, [0, 0, 0]);
         let b = Image::new(1, 1, [255, 255, 255]);
-        let m = Mask { w: 1, h: 1, data: vec![128] };
+        let m = Mask {
+            w: 1,
+            h: 1,
+            data: vec![128],
+        };
         blend_through_mask(&mut a, &b, &m);
         assert_eq!(a.px[0], [128, 128, 128]);
     }

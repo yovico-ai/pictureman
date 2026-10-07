@@ -1,0 +1,1114 @@
+                                                                                                                                             Picture Man
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Picture Man for Windows
+User's Manual
+Version 1.55
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Copyright 1992 Potapov WORKS, STOIK Ltd.
+
+
+
+TABLE OF CONTENTS
+
+
+
+
+
+
+
+
+                    Operational Considerations..................6
+
+
+
+
+
+
+
+
+
+
+                    Undo last step, reload and erase...........11
+
+
+
+
+
+
+                    Setting color and dithering options........15
+
+
+                    Showing and hiding the Toolbox.............16
+
+                    Calibrating your display...................16
+
+
+                    Picture Man Reference Manual...............17
+                   
+
+
+
+
+                 
+
+                    Development of New Converters..............26
+
+                    Appendix 1. Custom frame grabber support...31
+
+                    Appendix 2. TWAIN support..................31
+
+                    Appendix 3. Format of the correction table.31
+
+                    Appendix 4. Registration Form..............32
+
+ACKNOWLEDGEMENTS
+
+All product names used in this text are trade marks of their manufacturers and are used only for reference.
+
+INTRODUCTION
+
+Welcome to Picture Man version 1.55. This is powerful yet simple in use package designed for true color image enhancement, retouching, painting, creating special effects, printing and so on. We are proud to claim that Picture Man v.1.55 is the most powerful image processing tool for Windows distributed as a shareware program.
+
+The key feature of Picture Man is that it not only allows to process image in a selected area but to paint with every available processing filter or transformation as well. It results in outstanding retouching capabilities. 
+
+Picture Man offers user-friendly interface. You don't have to be an expert in image processing to obtain professional looking results.
+
+We are inviting you to get acquainted with Picture Man and we hope that this tool will save your time and will introduce a speed and accuracy into your creative process.
+
+FEATURES
+Picture Man v.1.55 is designed to respond a wide variety of image processing needs from scanning or grabbing image to outputting it to any Windows-compatible device or export into another application in one of the popular image formats. Here are just few features available in Picture Man v.1.55:
+
++	Internally Picture Man v.1.55 handles true color image, but it can read, process and save Black & White, Greyscale, Paletted 16 and 256 Color and RGB True Color data types. In addition, Picture Man can produce 15- and 16-bit HiColor images. Any of processing operations available in Picture Man can be applied to any of these data types.
++	You can input image from any scanner, video capturing board, or other input device which has a TWAIN-compliant driver.
++	You can implement a very simple interface to acquire an image input from a custom device.
++	Picture Man v.1.55 can make conversion from one image format to another, supporting color reduction and dithering if needed. Picture Man v.1.55 allows an Open Interface to image format converters, so you can design your own DLL's for custom formats.
++	Picture Man v.1.55 currently supports TIFF 5.0, PCX, GIF, TARGA, JPEG, BMP, and can save images in Encapsulated Postscript files.
++	Picture Man v.1.55 runs multiple instances. You can copy fragment of an image in one window and paste it into another one.
++	Picture Man provides true multitasking. It can process several images in the background simultaneously.
++	You can paint within Picture Man.
++	You can paint using natural fluctuating colors.
++	You can insert text filled with color, gradients, patterns and so on.
++	Picture Man offers 46 different image processing filters and transformations, which can be done in 7 types of selected local areas with smooth or sharp edges or in the whole image. You can paint with each available operation. The Magic Wand selection tool is also available.
++	Picture Man provides virtual memory support. Size of an accepted image is limited only by your free hard disk space.
+
+DISCLAIMER - AGREEMENT FOR USING PICTURE MAN
+Users of Picture Man v.1.55 must accept this disclaimer of warranty:
+"Picture Man is supplied as is.  Potapov WORKS disclaims all warranties, expressed or implied, including, without limitation, the warranties of merchant ability and of fitness for any purpose. Potapov WORKS assumes no liability for damages, direct or consequential, which may result from the use of Picture Man." 
+Picture Man v.1.55 is a "shareware program" and is provided at no charge to the user for evaluation.  Feel free to share it with your friends, but please do not give it away altered or as part of another system.  The essence of "user-supported" software is to provide personal computer users with quality software without high prices, and yet to provide incentive for programmers to continue to develop new products.  If you find this program useful and find that you are using Picture Man and continue to use Picture Man after a reasonable trial period, you must make a registration payment to Potapov WORKS, STOIK Ltd.  The registration fee will license one copy for use on any one computer at any one time. An example is that this software may be used by any number of people and may be freely moved from one computer location to another, so long as there is no possibility of it being used at one location while it's being used at another.
+
+You are encouraged to pass a shareware copy of Picture Man v.1.55 along to your friends for evaluation.  Please encourage them to register their copy if they find that they can use it. The unrestricted version may not be distributed. You may also take a reasonable fee for distributing a shareware copy.
+
+All registered users will receive a license number, information about updates, new versions, converters for additional formats and technical support via e-mail.
+
+Remember, when you register, you will help us to develop this product further!
+One more reason: this product came from Russia. When you register, you personally make a real contribution into Russian conversion from totalitarian military staty to normal Western-style democracy. You help not to bureaucrats or former communists but to professionals who are making software development in Russia today.
+
+LICENSING AGREEMENT
+Licensed user a bound to the following licensing agreement.
+You may not transfer your license without written permission from Potapov WORKS, STOIK Ltd. 
+You may physically transfer Picture Man from one computer to another provided the program is used on only one computer at a time.
+TERM:
+The license to use this program is effective until terminated. You may terminate the license by destroying all copies of this program. It will also be terminated upon failure to comply with any of the terms or conditions of this agreement.
+WARRANTY:
+THIS PROGRAM IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND.
+AGREEMENT:                                
+By licensing Picture Man you agree to the above licensing agreement.
+
+LICENSING (REGISTERING)
+You may use Picture Man for a free two weeks trial period. If you continue to use Picture Man after the two weeks trial period, you are required to register your copy of Picture Man and obtain a license number. 
+
+When you register Picture Man you will be given a license number. After entering your license number, the information screen appeared on startup will be suppressed, and you will have an opportunity to make transformations in a selected area. This is the only restriction for an unregistered copy!
+You can register by completing the registration form and mailing it and a check to authors. The registration form with the address is at the end of the user's manual and in separate file called form.txt.
+
+Pricing is: Picture Man registration........$49.00
+
+All users of Picture Man v.1.02-1.51 may take the current version for free using the same license number.
+
+SUPPORT
+You may obtain support by contacting Potapov WORKS, STOIK Ltd. via Internet:
+potap@stoik.sensor.zgrad.su.
+OPERATIONAL CONSIDERATIONS
+Before installing Picture Man you need Microsoft Windows, version 3.0 or later, an IBM PC-AT, 386-AT, 486-AT, PS/2 or compatible computer. You also need about 1Mb of free hard disk space to install Picture Man files. Your computer should be equipped with not less than 2 Mb of system memory.  A pointing device, such as mouse, is necessary to use all power offered by the package. Without mouse you can install Picture Man and use most of its commands, but some functions will be unavailable. You must have enough temporary disk space to keep image caches, which are created during Picture Man session. Common dialog library COMMDLG.DLL must be presented in your Windows system directory!
+
+INSTALLATION
+Picture Man currently is made up of 25 files:
+PMAN.EXE - Picture Man main program
+MWAREA.DLL - virtual memory manager
+CJPG.DLL - JPEG compressor
+DJPG.DLL - JPEG decompressor
+DTARGA.DLL - TARGA reader.
+CTARGA.DLL - TARGA writer
+READBIN.DLL - reader for unformatted images
+WRITEBIN.DLL - writer for unformatted images
+READBMP.DLL - BMP reader
+WRITEBMP.DLL - BMP writer
+READGIF.DLL - GIF reader
+WRITEGIF.DLL - GIF writer
+READPCX.DLL - PCX reader
+WRITEPCX.DLL - PCX writer
+READTIF.DLL - TIFF reader
+WRITETIF.DLL - TIFF writer
+WRITEEPI.DLL - Encapsulated Postscript writer
+PMAN.HLP - help file for Picture Man
+PMAN.INI - system configuration file
+PMAN.WRI - this manual
+README.TXT - A short description of Picture Man and how to install it.
+FORM.TXT - A registration form.
+PWORKS.TXT - Information about Potapov WORKS.
+READPCX.C - An example of read converter for PCX format.
+WRITEPCX.C - An example of write converter for PCX format.
+CUSTOM.H - include file for developing new converters.
+IRINA.JPG - an example image.
+
+These files are stored in archive PMAN155.ZIP. Place this archive in the required directory and decompress it using the PKUNZIP utility. 
+
+Once the files are where you want them, add Picture Man to your Program Manager. Use your Windows manual for information on how to add an application to Program Manager.
+
+You are now ready to run Picture Man.
+
+PMAN.WRI is the user's manual. It is a Windows' Write file with all margins (top, bottom and both sides) set to 1".
+
+PICTURE MAN USER'S GUIDE
+STARTING PICTURE MAN
+As with all Windows based applications, you can start Picture Man in a number of ways. The easiest way is to
+1. Run Microsoft Windows.
+2. Locate Picture Man icon.
+3. Double click on this icon. The Picture Man window appears.
+You can use the New instance command from the File menu to start a new copy of Picture Man, or just repeat described above procedure.
+You can also start Picture Man using command string with an image file name as a parameter. In this case Picture Man automatically loads specified image.
+
+THE PICTURE MAN WINDOW
+Invoking Picture Man opens the application window. Besides the main window, the Tool box appear on the screen.
+The main window has appearance and controls, which are common for all Windows applications. Is has system menu,  title bar, menu bar, maximize and minimize buttons, scroll bars. You should handle all controls in a usual way. Please, refer to your Windows User Guide for additional information.
+
+THE TOOL BOX
+The Tool box buttons allow user to change the type of local fragment for image processing and transformation.
+There are 7 types of local areas available in Picture Man
+
+
+
+
+
+
+   !!!"""###$$$%%%&&&'''((()))***+++,,,---...///000111222333444555666777888999:::;;;<<<===>>>???@@@AAABBBCCCDDDEEEFFFGGGHHHIIIJJJKKKLLLMMMNNNOOOPPPQQQRRRSSSTTTUUUVVVWWWXXXYYYZZZ[[[\\\]]]^^^___```aaabbbcccdddeeefffggghhhiiijjjkkklllmmmnnnooopppqqqrrrssstttuuuvvvwwwxxxyyyzzz{{{|||}}}~~~€€€���‚‚‚ƒƒƒ„„„………†††‡‡‡ˆˆˆ‰‰‰ŠŠŠ‹‹‹ŒŒŒ���ŽŽŽ������‘‘‘’’’“““”””•••–––———˜˜˜™™™ššš›››œœœ���žžžŸŸŸ¡¡¡¢¢¢£££¤¤¤¥¥¥¦¦¦§§§¨¨¨©©©ªªª«««¬¬¬®®®¯¯¯°°°±±±²²²³³³´´´µµµ¶¶¶···¸¸¸¹¹¹ººº»»»¼¼¼½½½¾¾¾¿¿¿ÀÀÀÁÁÁÂÂÂÃÃÃÄÄÄÅÅÅÆÆÆÇÇÇÈÈÈÉÉÉÊÊÊËËËÌÌÌÍÍÍÎÎÎÏÏÏÐÐÐÑÑÑÒÒÒÓÓÓÔÔÔÕÕÕÖÖÖ×××ØØØÙÙÙÚÚÚÛÛÛÜÜÜÝÝÝÞÞÞßßßàààáááâââãããäääåååæææçççèèèéééêêêëëëìììíííîîîïïïðððñññòòòóóóôôôõõõööö÷÷÷øøøùùùúúúûûûüüüýýýþþþÿÿÿ€€€€€€€€€€€€€€€€€€€€€€€€€€ÿ€€€€€€€€€€€€€€€€€€€€€€€€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀ€€ÿÀÿÿÿÿÿÿÿÿÿÀÀ€€ÿÀÿÿÿÿÿÿÿÿÿÀÀ€€ÿÀÿÿÿÿÿÿÿÿÿÀÀ€€ÿÀÿÿÿÿÿÿÿÿÿÀÀ€€ÿÀÿÿÿÿÿÿÿÿÿÀÀ€€ÿÀÿÿÿÿÿÿÿÿÿÀÀ€€ÿÀÿÿÿÿÿÿÿÿÿÀÀ€€ÿÀÿÿÿÿÿÿÿÿÿÀÀ€€ÿÀÿÿÿÿÿÿÿÿÿÀÀ€€ÿÀÿÿÿÿÿÿÿÿÿÀÀ€€ÿÀÿÿÿÿÿÿÿÿÿÀÀ€€ÿÀÿÿÿÿÿÿÿÿÿÀÀ€€ÿÀÿÿÿÿÿÿÿÿÿÀÀ€€ÿÀÿÿÿÿÿÿÿÿÿÀÀ€€ÿÀÀÀ€€ÿÀÀÀÀÿÀÿÀÿÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÿÀÿÀÿÀÀÀÀÀÀ€€ÿÀÀÀÀÿÀÿÀÿÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿ€Whole image. After entering a command from menu Picture Man starts processing immediately.
+
+
+
+
+
+
+   !!!"""###$$$%%%&&&'''((()))***+++,,,---...///000111222333444555666777888999:::;;;<<<===>>>???@@@AAABBBCCCDDDEEEFFFGGGHHHIIIJJJKKKLLLMMMNNNOOOPPPQQQRRRSSSTTTUUUVVVWWWXXXYYYZZZ[[[\\\]]]^^^___```aaabbbcccdddeeefffggghhhiiijjjkkklllmmmnnnooopppqqqrrrssstttuuuvvvwwwxxxyyyzzz{{{|||}}}~~~€€€���‚‚‚ƒƒƒ„„„………†††‡‡‡ˆˆˆ‰‰‰ŠŠŠ‹‹‹ŒŒŒ���ŽŽŽ������‘‘‘’’’“““”””•••–––———˜˜˜™™™ššš›››œœœ���žžžŸŸŸ¡¡¡¢¢¢£££¤¤¤¥¥¥¦¦¦§§§¨¨¨©©©ªªª«««¬¬¬®®®¯¯¯°°°±±±²²²³³³´´´µµµ¶¶¶···¸¸¸¹¹¹ººº»»»¼¼¼½½½¾¾¾¿¿¿ÀÀÀÁÁÁÂÂÂÃÃÃÄÄÄÅÅÅÆÆÆÇÇÇÈÈÈÉÉÉÊÊÊËËËÌÌÌÍÍÍÎÎÎÏÏÏÐÐÐÑÑÑÒÒÒÓÓÓÔÔÔÕÕÕÖÖÖ×××ØØØÙÙÙÚÚÚÛÛÛÜÜÜÝÝÝÞÞÞßßßàààáááâââãããäääåååæææçççèèèéééêêêëëëìììíííîîîïïïðððñññòòòóóóôôôõõõööö÷÷÷øøøùùùúúúûûûüüüýýýþþþÿÿÿ€€€€€€€€€€€€€€€€€€€€€€€€€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿ€Rectangular fragment. After entering a command from menu Picture Man offers you to select rectangle. When you finish editing rectangle,  double click interior or exterior of the rectangle to indicate which part of an image should be processed.  System will start processing. To cancel area selection, click outside Picture Man window and the Toolbox, or press Esc.
+
+
+
+
+
+
+   !!!"""###$$$%%%&&&'''((()))***+++,,,---...///000111222333444555666777888999:::;;;<<<===>>>???@@@AAABBBCCCDDDEEEFFFGGGHHHIIIJJJKKKLLLMMMNNNOOOPPPQQQRRRSSSTTTUUUVVVWWWXXXYYYZZZ[[[\\\]]]^^^___```aaabbbcccdddeeefffggghhhiiijjjkkklllmmmnnnooopppqqqrrrssstttuuuvvvwwwxxxyyyzzz{{{|||}}}~~~€€€���‚‚‚ƒƒƒ„„„………†††‡‡‡ˆˆˆ‰‰‰ŠŠŠ‹‹‹ŒŒŒ���ŽŽŽ������‘‘‘’’’“““”””•••–––———˜˜˜™™™ššš›››œœœ���žžžŸŸŸ¡¡¡¢¢¢£££¤¤¤¥¥¥¦¦¦§§§¨¨¨©©©ªªª«««¬¬¬®®®¯¯¯°°°±±±²²²³³³´´´µµµ¶¶¶···¸¸¸¹¹¹ººº»»»¼¼¼½½½¾¾¾¿¿¿ÀÀÀÁÁÁÂÂÂÃÃÃÄÄÄÅÅÅÆÆÆÇÇÇÈÈÈÉÉÉÊÊÊËËËÌÌÌÍÍÍÎÎÎÏÏÏÐÐÐÑÑÑÒÒÒÓÓÓÔÔÔÕÕÕÖÖÖ×××ØØØÙÙÙÚÚÚÛÛÛÜÜÜÝÝÝÞÞÞßßßàààáááâââãããäääåååæææçççèèèéééêêêëëëìììíííîîîïïïðððñññòòòóóóôôôõõõööö÷÷÷øøøùùùúúúûûûüüüýýýþþþÿÿÿ€€€€€€€€€€€€€€€€€€€€€€€€€€ÿ€€€€€€€€€€€€€€€€€€€€€€€€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿ€Elliptic fragment. After entering a command from menu Picture Man offers you to select ellipse. When you finish editing area,  double click interior or exterior of the ellipse to indicate which part of an image should be processed.  System will start processing. To cancel area selection, click outside Picture Man window and the Toolbox, or press Esc.
+
+
+
+
+
+
+   !!!"""###$$$%%%&&&'''((()))***+++,,,---...///000111222333444555666777888999:::;;;<<<===>>>???@@@AAABBBCCCDDDEEEFFFGGGHHHIIIJJJKKKLLLMMMNNNOOOPPPQQQRRRSSSTTTUUUVVVWWWXXXYYYZZZ[[[\\\]]]^^^___```aaabbbcccdddeeefffggghhhiiijjjkkklllmmmnnnooopppqqqrrrssstttuuuvvvwwwxxxyyyzzz{{{|||}}}~~~€€€���‚‚‚ƒƒƒ„„„………†††‡‡‡ˆˆˆ‰‰‰ŠŠŠ‹‹‹ŒŒŒ���ŽŽŽ������‘‘‘’’’“““”””•••–––———˜˜˜™™™ššš›››œœœ���žžžŸŸŸ¡¡¡¢¢¢£££¤¤¤¥¥¥¦¦¦§§§¨¨¨©©©ªªª«««¬¬¬®®®¯¯¯°°°±±±²²²³³³´´´µµµ¶¶¶···¸¸¸¹¹¹ººº»»»¼¼¼½½½¾¾¾¿¿¿ÀÀÀÁÁÁÂÂÂÃÃÃÄÄÄÅÅÅÆÆÆÇÇÇÈÈÈÉÉÉÊÊÊËËËÌÌÌÍÍÍÎÎÎÏÏÏÐÐÐÑÑÑÒÒÒÓÓÓÔÔÔÕÕÕÖÖÖ×××ØØØÙÙÙÚÚÚÛÛÛÜÜÜÝÝÝÞÞÞßßßàààáááâââãããäääåååæææçççèèèéééêêêëëëìììíííîîîïïïðððñññòòòóóóôôôõõõööö÷÷÷øøøùùùúúúûûûüüüýýýþþþÿÿÿ€€€€€€€€€€€€€€€€€€€€€€€€€€ÿ€€€€€€€€€€€€€€€€€€€€€€€€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿ€Arbitrary polygonal fragment. After entering a command from menu Picture Man offers you to select polygon. When you finish editing area,  double click interior or exterior of the polygon to indicate which part of an image should be processed.  System will start processing. To cancel area selection, click outside Picture Man window and the Toolbox, or press Esc.
+
+
+
+
+
+
+   !!!"""###$$$%%%&&&'''((()))***+++,,,---...///000111222333444555666777888999:::;;;<<<===>>>???@@@AAABBBCCCDDDEEEFFFGGGHHHIIIJJJKKKLLLMMMNNNOOOPPPQQQRRRSSSTTTUUUVVVWWWXXXYYYZZZ[[[\\\]]]^^^___```aaabbbcccdddeeefffggghhhiiijjjkkklllmmmnnnooopppqqqrrrssstttuuuvvvwwwxxxyyyzzz{{{|||}}}~~~€€€���‚‚‚ƒƒƒ„„„………†††‡‡‡ˆˆˆ‰‰‰ŠŠŠ‹‹‹ŒŒŒ���ŽŽŽ������‘‘‘’’’“““”””•••–––———˜˜˜™™™ššš›››œœœ���žžžŸŸŸ¡¡¡¢¢¢£££¤¤¤¥¥¥¦¦¦§§§¨¨¨©©©ªªª«««¬¬¬®®®¯¯¯°°°±±±²²²³³³´´´µµµ¶¶¶···¸¸¸¹¹¹ººº»»»¼¼¼½½½¾¾¾¿¿¿ÀÀÀÁÁÁÂÂÂÃÃÃÄÄÄÅÅÅÆÆÆÇÇÇÈÈÈÉÉÉÊÊÊËËËÌÌÌÍÍÍÎÎÎÏÏÏÐÐÐÑÑÑÒÒÒÓÓÓÔÔÔÕÕÕÖÖÖ×××ØØØÙÙÙÚÚÚÛÛÛÜÜÜÝÝÝÞÞÞßßßàààáááâââãããäääåååæææçççèèèéééêêêëëëìììíííîîîïïïðððñññòòòóóóôôôõõõööö÷÷÷øøøùùùúúúûûûüüüýýýþþþÿÿÿ€€€€€€€€€€€€€€€€€€€€€€€€€€ÿ€€€€€€€€€€€€€€€€€€€€€€€€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿ€Text. After entering a command from menu or pressing one of toolbox buttons, Picture Man offers you to select text. Choose font typeface, size and type desired text. Click OK. Choose position of the text. As the end of selection,  double click interior or exterior of the bounding rectangle to indicate which part of an image should be processed.  System will start processing. To cancel area selection, click outside Picture Man window and the Toolbox, or press Esc.
+
+
+
+
+
+
+   !!!"""###$$$%%%&&&'''((()))***+++,,,---...///000111222333444555666777888999:::;;;<<<===>>>???@@@AAABBBCCCDDDEEEFFFGGGHHHIIIJJJKKKLLLMMMNNNOOOPPPQQQRRRSSSTTTUUUVVVWWWXXXYYYZZZ[[[\\\]]]^^^___```aaabbbcccdddeeefffggghhhiiijjjkkklllmmmnnnooopppqqqrrrssstttuuuvvvwwwxxxyyyzzz{{{|||}}}~~~€€€���‚‚‚ƒƒƒ„„„………†††‡‡‡ˆˆˆ‰‰‰ŠŠŠ‹‹‹ŒŒŒ���ŽŽŽ������‘‘‘’’’“““”””•••–––———˜˜˜™™™ššš›››œœœ���žžžŸŸŸ¡¡¡¢¢¢£££¤¤¤¥¥¥¦¦¦§§§¨¨¨©©©ªªª«««¬¬¬®®®¯¯¯°°°±±±²²²³³³´´´µµµ¶¶¶···¸¸¸¹¹¹ººº»»»¼¼¼½½½¾¾¾¿¿¿ÀÀÀÁÁÁÂÂÂÃÃÃÄÄÄÅÅÅÆÆÆÇÇÇÈÈÈÉÉÉÊÊÊËËËÌÌÌÍÍÍÎÎÎÏÏÏÐÐÐÑÑÑÒÒÒÓÓÓÔÔÔÕÕÕÖÖÖ×××ØØØÙÙÙÚÚÚÛÛÛÜÜÜÝÝÝÞÞÞßßßàààáááâââãããäääåååæææçççèèèéééêêêëëëìììíííîîîïïïðððñññòòòóóóôôôõõõööö÷÷÷øøøùùùúúúûûûüüüýýýþþþÿÿÿ€€€€€€€€€€€€€€€€€€€€€€€€€€ÿ€€€€€€€€€€€€€€€€€€€€€€€€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€ÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀ€ÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀ€ÿÿÿÿÿÀÀ€€ÿÀÀÀÀÀÀÀÀ€ÿÿÿÿÿÿÿÿÀ€€ÿÀÀÀÀÀÀÀÀÿÿÿÿÿÿÿÿÿÿÿÀ€€ÿÀÀÀÀÀÀÀÿÿÿÿÿÿÿÿÿÿÿÀÀ€€ÿÀÀÀÀÀÿÿÿÿÿÿÿÿÿÿÿÿÀÀÀÀ€€ÿÀÀÀÀÿÿÿÿÿÿÿÿÿÿÿÀÀÀÀ€€ÿÀÀÀÀÿÿÀÿÿÿÿÿÿÿÀÀÀÀ€€ÿÀÀÀÀÿÿÿÿÿÿÿÿÀÀÀÀ€€ÿÀÀÀÿÀÿÿÿÿÿÀÀÀÀÀ€€ÿÀÀÀÿÀÿÿÿÿÀÀÀÀÀÀ€€ÿÀÀÀÀÿÿÿÀÀÀÀÀÀÀ€€ÿÀÀÀÀÿÿÿÿÀÀÀÀÀÀÀÀ€€ÿÀÀÀÿÿÿÿÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿ€Freehand. After entering a command from menu Picture Man offers you to select area. Just paint the area as you do it with the pen. As the end of selection,  double click interior or exterior of the area to indicate which part of an image should be processed.  System will start processing. To cancel area selection, click outside Picture Man window and the Toolbox, or press Esc. For erasing use the right mouse button.
+
+
+
+
+
+
+   !!!"""###$$$%%%&&&'''((()))***+++,,,---...///000111222333444555666777888999:::;;;<<<===>>>???@@@AAABBBCCCDDDEEEFFFGGGHHHIIIJJJKKKLLLMMMNNNOOOPPPQQQRRRSSSTTTUUUVVVWWWXXXYYYZZZ[[[\\\]]]^^^___```aaabbbcccdddeeefffggghhhiiijjjkkklllmmmnnnooopppqqqrrrssstttuuuvvvwwwxxxyyyzzz{{{|||}}}~~~€€€���‚‚‚ƒƒƒ„„„………†††‡‡‡ˆˆˆ‰‰‰ŠŠŠ‹‹‹ŒŒŒ���ŽŽŽ������‘‘‘’’’“““”””•••–––———˜˜˜™™™ššš›››œœœ���žžžŸŸŸ¡¡¡¢¢¢£££¤¤¤¥¥¥¦¦¦§§§¨¨¨©©©ªªª«««¬¬¬®®®¯¯¯°°°±±±²²²³³³´´´µµµ¶¶¶···¸¸¸¹¹¹ººº»»»¼¼¼½½½¾¾¾¿¿¿ÀÀÀÁÁÁÂÂÂÃÃÃÄÄÄÅÅÅÆÆÆÇÇÇÈÈÈÉÉÉÊÊÊËËËÌÌÌÍÍÍÎÎÎÏÏÏÐÐÐÑÑÑÒÒÒÓÓÓÔÔÔÕÕÕÖÖÖ×××ØØØÙÙÙÚÚÚÛÛÛÜÜÜÝÝÝÞÞÞßßßàààáááâââãããäääåååæææçççèèèéééêêêëëëìììíííîîîïïïðððñññòòòóóóôôôõõõööö÷÷÷øøøùùùúúúûûûüüüýýýþþþÿÿÿ€€€€€€€€€€€€€€€€€€€€€€€€€€ÿ€€€€€€€€€€€€€€€€€€€€€€€€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÿÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÿÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿ€Pen. When this type of area is selected, you can paint with any image processing filter or transformation available. System cancels painting mode when you change type of the area or load new image.
+
+
+
+
+
+
+   !!!"""###$$$%%%&&&'''((()))***+++,,,---...///000111222333444555666777888999:::;;;<<<===>>>???@@@AAABBBCCCDDDEEEFFFGGGHHHIIIJJJKKKLLLMMMNNNOOOPPPQQQRRRSSSTTTUUUVVVWWWXXXYYYZZZ[[[\\\]]]^^^___```aaabbbcccdddeeefffggghhhiiijjjkkklllmmmnnnooopppqqqrrrssstttuuuvvvwwwxxxyyyzzz{{{|||}}}~~~€€€���‚‚‚ƒƒƒ„„„………†††‡‡‡ˆˆˆ‰‰‰ŠŠŠ‹‹‹ŒŒŒ���ŽŽŽ������‘‘‘’’’“““”””•••–––———˜˜˜™™™ššš›››œœœ���žžžŸŸŸ¡¡¡¢¢¢£££¤¤¤¥¥¥¦¦¦§§§¨¨¨©©©ªªª«««¬¬¬®®®¯¯¯°°°±±±²²²³³³´´´µµµ¶¶¶···¸¸¸¹¹¹ººº»»»¼¼¼½½½¾¾¾¿¿¿ÀÀÀÁÁÁÂÂÂÃÃÃÄÄÄÅÅÅÆÆÆÇÇÇÈÈÈÉÉÉÊÊÊËËËÌÌÌÍÍÍÎÎÎÏÏÏÐÐÐÑÑÑÒÒÒÓÓÓÔÔÔÕÕÕÖÖÖ×××ØØØÙÙÙÚÚÚÛÛÛÜÜÜÝÝÝÞÞÞßßßàààáááâââãããäääåååæææçççèèèéééêêêëëëìììíííîîîïïïðððñññòòòóóóôôôõõõööö÷÷÷øøøùùùúúúûûûüüüýýýþþþÿÿÿ€€€€€€€€€€€€€€€€€€€€€€€€€€ÿ€€€€€€€€€€€€€€€€€€€€€€€€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÿÀÀÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÿÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÿÀÀÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿ€Magic wand. After entering a command from menu Picture Man offers you to select area. Indicate reference point for selection. Picture Man outlines area with color closed to the color in reference point  As the end of selection,  double click interior or exterior of the area to indicate which part of an image should be processed.  System will start processing. To cancel area selection, click outside Picture Man window and the Toolbox, or press Esc.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Note! When painting, Picture Man treats the degree of smoothing as a degree of  transparency of the pen. 
+
+Picture Man offers 2 types of pen/brush shapes of the following set
+
+
+
+
+
+
+   !!!"""###$$$%%%&&&'''((()))***+++,,,---...///000111222333444555666777888999:::;;;<<<===>>>???@@@AAABBBCCCDDDEEEFFFGGGHHHIIIJJJKKKLLLMMMNNNOOOPPPQQQRRRSSSTTTUUUVVVWWWXXXYYYZZZ[[[\\\]]]^^^___```aaabbbcccdddeeefffggghhhiiijjjkkklllmmmnnnooopppqqqrrrssstttuuuvvvwwwxxxyyyzzz{{{|||}}}~~~€€€���‚‚‚ƒƒƒ„„„………†††‡‡‡ˆˆˆ‰‰‰ŠŠŠ‹‹‹ŒŒŒ���ŽŽŽ������‘‘‘’’’“““”””•••–––———˜˜˜™™™ššš›››œœœ���žžžŸŸŸ¡¡¡¢¢¢£££¤¤¤¥¥¥¦¦¦§§§¨¨¨©©©ªªª«««¬¬¬®®®¯¯¯°°°±±±²²²³³³´´´µµµ¶¶¶···¸¸¸¹¹¹ººº»»»¼¼¼½½½¾¾¾¿¿¿ÀÀÀÁÁÁÂÂÂÃÃÃÄÄÄÅÅÅÆÆÆÇÇÇÈÈÈÉÉÉÊÊÊËËËÌÌÌÍÍÍÎÎÎÏÏÏÐÐÐÑÑÑÒÒÒÓÓÓÔÔÔÕÕÕÖÖÖ×××ØØØÙÙÙÚÚÚÛÛÛÜÜÜÝÝÝÞÞÞßßßàààáááâââãããäääåååæææçççèèèéééêêêëëëìììíííîîîïïïðððñññòòòóóóôôôõõõööö÷÷÷øøøùùùúúúûûûüüüýýýþþþÿÿÿ€€€€€€€€€€€€€€€€€€€€€€€€€€ÿ€€€€€€€€€€€€€€€€€€€€€€€€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿ€square pen
+
+
+
+
+
+
+   !!!"""###$$$%%%&&&'''((()))***+++,,,---...///000111222333444555666777888999:::;;;<<<===>>>???@@@AAABBBCCCDDDEEEFFFGGGHHHIIIJJJKKKLLLMMMNNNOOOPPPQQQRRRSSSTTTUUUVVVWWWXXXYYYZZZ[[[\\\]]]^^^___```aaabbbcccdddeeefffggghhhiiijjjkkklllmmmnnnooopppqqqrrrssstttuuuvvvwwwxxxyyyzzz{{{|||}}}~~~€€€���‚‚‚ƒƒƒ„„„………†††‡‡‡ˆˆˆ‰‰‰ŠŠŠ‹‹‹ŒŒŒ���ŽŽŽ������‘‘‘’’’“““”””•••–––———˜˜˜™™™ššš›››œœœ���žžžŸŸŸ¡¡¡¢¢¢£££¤¤¤¥¥¥¦¦¦§§§¨¨¨©©©ªªª«««¬¬¬®®®¯¯¯°°°±±±²²²³³³´´´µµµ¶¶¶···¸¸¸¹¹¹ººº»»»¼¼¼½½½¾¾¾¿¿¿ÀÀÀÁÁÁÂÂÂÃÃÃÄÄÄÅÅÅÆÆÆÇÇÇÈÈÈÉÉÉÊÊÊËËËÌÌÌÍÍÍÎÎÎÏÏÏÐÐÐÑÑÑÒÒÒÓÓÓÔÔÔÕÕÕÖÖÖ×××ØØØÙÙÙÚÚÚÛÛÛÜÜÜÝÝÝÞÞÞßßßàààáááâââãããäääåååæææçççèèèéééêêêëëëìììíííîîîïïïðððñññòòòóóóôôôõõõööö÷÷÷øøøùùùúúúûûûüüüýýýþþþÿÿÿ€€€€€€€€€€€€€€€€€€€€€€€€€€ÿ€€€€€€€€€€€€€€€€€€€€€€€€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀÀ€€ÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿ€circle pen
+
+
+äâ�<	.·#+(¯èèDIBÙÚ÷ÿÿ 	(:Eëë€€€ÀÀÀüüü3333333333333333333333333333332DDDDDDDDDDDDDDDDDDDDDDDDDDD32$DDDDDDDDDDDDDDDDDDDDDDDDDD32#3333333333333333333333333D32#3333333333333333333333333D32#3133313D32#313313D32#31A3313D32#D313D32#DDA313D32#DDD13D32#DDA313D32#D313D32#31A3313D32#313313D32#3133313D32#3333333333333333333333333D32#3333333333333333333333333D32#3333333333333333333333333D32#3333313D32#3333313D32#3333313D32#3333313D32#3333313D32#3333313D32#3333313D32#3333313D32#3333313D32#3333333333333333333333333D32#3333333333333333333333333D32#3333333333333333333333333D32#3333313D32#3333313D32#3333313D32#3333313D32#3333313D32#3333313D32#3333313D32#3333333333333333333333333D32#3333333333333333333333333D32#3333333333333333333333333D32#3333333333333333333333333D32#3333313D32#3333313D32#3333313D32#3333313D32#3333313D32#3333333333333333333333333D32#3333333333333333333333333D32#3333333333333333333333333D32#3333333333333333333333333D32#3333333333333333333333333D32#3333313D32#3333313D32#3333313D32#3333333333333333333333333D32#3333333333333333333333333D32#3333333333333333333333333D32#3333333333333333333333333D32#3333333333333333333333333D32#3333333333333333333333333D32#3333313D32#3333333333333333333333333D32#3333333333333333333333333D32#3333333333333333333333333D32#3333333333333333333333333D32""""""""""""""""""""""""""$32"""""""""""""""""""""""""""33333333333333333333333333333Pen/Line size box. There are 6 sizes available from 1 to 11 pixels. Just click on a line of a desired size.
+
+äõ#œ"·#+(·èèDIBø9üÿÿ€(; ëëTTT€€€ÀÀÀüüüDDDDDDDDDDDDDDDDDDDDDDDDDDDDD@DDDDDDDDDDDDDDDDDDDDDDDDDDDDD@DDDDDDDDDDDDDDDDDDDDDDDDDDDDD@DCUUUUUUUUUUUUUA@DC5UUUUUUUUUUUU3333333333331@DC2"""""""""""U3333333333331@DC2"""""""""""UDDDDDDDDDDDC1@DC2"""""""""""UDDDDDDDDDDDC1@DC2"""""""""""UDADDDDDDDDDC1@DC2"""""""""""UDDDDDDDDDC1@DC2"""""""""""UDAADDDDDDDDC1@DC2"""""""""""UDDDDDDDDDC1@DC2"""""""""""UDDAEDDDDDDC1@DC2"""""""""""UDDATQDDDDDDC1@DC2"""""""""""UDDDEDDDDDC1@DC2"""""""""""UDDDATQADDDDC1@DC2"""""""""""UDDDDEDDDDC1@DC2"""""""""""UDDDDAQQDDDC1@DC2"""""""""""UDDDDDUQDDDC1@DC2"""""""""""UDDDDAAUQDDDC1@DC2"""""""""""UDDDDDAUUDDC1@DC2"""""""""""UDDDDDDUUDC1@DC2"""""""""""UDDDDDDDUDC1@DC2"""""""""""UDDDDDDDUQDC1@DC2"""""""""""UDDDDDDDAQDC1@DC2"""""""""""UDDDDDDDDADC1@DC2"""""""""""UDDDDDDDDDDDC1@DC2"""""""""""UDDDDDDDDDDDC1@DC2"""""""""""UDDDDDDDDDDDC1@DC3333333333335UUUUUUUUUUUU1@DC3333333333333A@DDDDDDDDDDDDDDDDDDDDDDDDDDDDD@Color selection box. You can either pick up color from loaded image using the eyedropper button or choose it using the Color selection dialog. To do this just click on color box. Picture Man uses common dialogs for color selection. Please, refer to your Windows User's guide for additional information.
+
+CREATING A NEW IMAGE
+The "New..."  command in the File menu creates an image filled with white color. Use this command to create an empty image into which you can paste fragments from another Picture Man windows to form a new composite image.
+When you choose the "New..." command, a dialog box containing the following options appears:
+Width - sets the width of the image.
+Height - sets the height of the image.
+Unit - sets the unit of measurement to inches, centimetres, or pixels.
+Resolution - sets the resolution of the image.
+Enter all necessary values and click on OK button.
+
+OPENING AN IMAGE FILE
+Before you begin to edit image you must load it into Picture Man. Use the "Open" command in the File menu to load an image file from disk. The File Open dialog box appears. You must enter the appropriate file extension, locate directory and click on appropriate filename. Then click OK. The dialog box closes and Picture Man loads image into window. 
+Note! Picture Man uses common dialogs to handle files. Please, refer to your Windows User's Guide for additional information.
+
+SAVING AN IMAGE
+To retain images for later work you must save them. We recommend you to save regularly from time to time to avoid possibility of losing work.
+In order to save an image you must choose one of the following commands from the File menu:
++	Save -  stores image into file with the name currently displayed on windows title bar with current color/grey content and dithering options.
++	Save As... -  after entering this command, the "Save As..." dialog box appears. You must choose an appropriate format, sub format, enter desired filename and click on OK. After completion of saving, Picture Man changes filename on the title bar.
++	Convert... -  This command slightly differs from the "Save As..." one. In this case Picture Man will not reload saved image. The name of edited image remains the same.
+
+
+EDITING AN IMAGE
+To edit a specific area within an image you must do the following steps:
++	select type of the area to be edited. Click on appropriate button in Tool box or enter command from the Options/Area menu.
++	select operation to perform. All operations you can apply to an image are gathered in the Edit menu and are divided into 4 groups.
+You can find geometrical transforms which alter a size of an image or a fragment,  produces deformations in the Transformation sub menu.
+The next menu entry "Tune" contains operations which change color/half-tone content of an image
+The Fill area menu provides you with operations, that fill area with color, gradient, pattern or patch area using border image colors.
+The "Processing" menu consists of image processing filters, which change appearance of an image.
++	After you have chosen the operation, Picture Man either starts processing in the case of whole image area or offers you to select an area to process. In each case, you must end the area selection with double click within or outside the area to indicate whether to process an interior or exterior of the fragment.
++	If you enter the Tune or Processing command, Picture Man starts processing. You can cancel it by pressing Esc button.
++	If you enter the Transformation command, Picture Man offers you to change form, position of the fragment or a degree of deformation (this step is operation-specific).  Click within the area to start the processing.
+
+UNDO LAST STEP, RELOAD, AND ERASE
+Picture Man provides you with three ways to recover from mistakes: The Reload command in the File menu, The Undo command in the Edit menu and the Erase command in the Edit menu.
+Reload 
+If you are experimenting with an image and you need to return to previously saved version, select "Reload" from the File menu. Be careful! Picture Man can't undo this command.
+Undo
+If you are not satisfied with the result of command you have applied, select "Undo" from the Edit menu. Picture Man restores the image to its state prior to the application of the command. Undo will only undo the most recent change. If you need to undo several changes, use the Reload command.
+Erase
+This command performs undo in a selected area. It removes the result of last applied command and replaces it with the previous image content. You can apply this command several times. When you are in painting mode, you can invoke erase by means of pressing the right mouse button.
+
+AREA SELECTION
+Picture Man allows to process images both as a whole and in a selected area. For doing a local processing in a selected area it is necessary to press an appropriate button in the Tool box or select the Rectangle, Ellipse, Polygon, Freehand, Magic wand,  Pen, Text command in the Options/Area menu. The edge of the processed area may be masked so it would appear as if the processed image would flow into a non-processed one. For attaining this effect the Smooth low, Smooth Medium or Smooth high command should be selected in the Options-Edge menu (these commands define different degree of smoothing) or an appropriate Edge button in the Tool box should be pressed. After setting area/edge parameters choose the desired kind of transformation, processing, filling area or tuning for the loaded image. Choose parameters specific for given processing if needed. Then Picture Man shows an area-specific cursor inviting you to select area for processing.
+Entering a Rectangular Area
+The cursor in the form of an arrow with small rectangle should be moved to the left upper corner of a supposed area, then it is necessary to press the left button of the mouse and while not releasing it to move the cursor to the right lower corner of the area. The selected dashed-line rectangle  will be displayed in the window. It is possible to drag corners and sides of the rectangle with the mouse and to correct dimensions in such a way. The rectangle may be moved in the following manner:
+
++	Move the arrow of the mouse inside the rectangle;
++	Press the left button of the mouse and the arrow will be replaced with the palm as if it supports the rectangle;
++	While moving the mouse select the necessary position of the rectangle in the window and release the button.
+After setting the dimensions and position of the area double click the left button of the mouse preliminary having moved the arrow inside the rectangle if you want to process the image within the rectangle or outside if you want to process the exterior of the rectangle.
+
+
+Entering an Elliptic Area
+The cursor in the form of an arrow with a small circle should be moved to the left upper corner of a supposed area, then it is necessary to press the left button of the mouse and while not releasing it to move the cursor to the right lower corner of the area. The selected dashed-line ellipse  will be displayed in the window. It is possible to drag corners (upper, bottom, left and right points) with the mouse and to correct dimensions in such a way. The ellipse may be moved in the following manner:
++	Move the arrow of the mouse inside the ellipse;
++	Press the left button of the mouse and the arrow will be replaced with the palm as if it supports the ellipse;
++	While moving the mouse select the necessary position of the ellipse in the window and release the button.
+After setting the dimensions and position of the area double click the left button of the mouse preliminary having moved the arrow inside the ellipse if you want to process the image within the ellipse or outside if you want to process the exterior of the ellipse.
+
+Entering a Polygonal Area
+For entering a polygon mark consecutively its apexes by pressing the left button of the mouse. (If to hold the pressed button then the current edge follows the cursor and the setting of an apex is made by releasing the button.) It is possible to cancel an entered apex by pressing the button of the mouse with a simultaneously pressed "Shift" key. When removing the very first apex it is replaced with a new one in the place pointed out with the cursor. To finish entering a polygon double click the left button of mouse and the last apex of polygon coincides with the first one, the polygon is becoming closed.
+Then you can edit the entered polygon. Picture Man allows to change its position, position of any apex and add a new apex as well.
+The polygon may be moved in the following manner:
++	Move the arrow of the mouse inside the polygon;
++	Press the left button of the mouse and the arrow will be replaced with the palm as if it supports the polygon;
++	While moving the mouse select the necessary position of the polygon in the window and release the button.
+An arbitrary apex may be moved in the following manner:
++	Position the arrow of the mouse on the appropriate apex. A cursor in the form of a diagonal cross appears.
++	 Press the left button of the mouse;
++	While moving the mouse select the necessary position of the apex in the window and release the button.
+A new apex may be added to contour in the following manner:
++	Position the arrow of the mouse on the appropriate side. 
++   Press the left button of the mouse and the Control key simultaneously; Picture Man adds a new apex and switches to the mode of it's moving
++	While moving the mouse select the necessary position of the apex in the window and release the button.
+After setting the dimensions and position of the area double click the left button of the mouse preliminary having moved the arrow inside the polygon if you want to process the image within the polygon or outside if you want to process it's exterior.
+
+Entering a Freehand Area
+While entering a freehand area, a cursor in the form of hand appears on the screen. You must simply paint a desired area. After entering the area double click the left button to indicate whether you want to process an interior or exterior of the area.
+
+Entering a Text Area
+Picture Man treats text as a king of a selected area. After entering a processing command, cursor in the form of an arrow with small "T" letter appears. Move  it to the left bottom corner of a supposed text area and click the mouse. The "Select text" dialog box appears. You must choose typeface, size, effects and enter an appropriate text into entry box. Click on OK button The text area appears on the screen. Move it to the desired place by dragging with the mouse.
+After setting the dimensions and position of the area double click the left button of the mouse preliminary having moved the arrow inside the bounding rectangle if you want to process the image within the text or outside if you want to process it's exterior.
+
+Entering a Magic Wand Area
+The Magic Wand selects an area in an image, which contains similar colors or greys. You can define how similar colors and greys are. To define the degree of similarity (or the Tolerance) enter the Magic wand command in the Options menu. The "Magic Wand options" dialog box appears. The more value of tolerance, the wider would be a selected area. You can also choose between two models of color matching: first, named RGB model, matches R, G, B channels independently, second, HVS model, relies more on color  similarity than on brightness. In addition, Picture Man allows to select either unifold or non-unifold area.  The term Unifold means that you can get from any point of an area to another point without crossing the boundary.
+While entering a Magic Wand area, a cursor in the form of wand appears on the screen. You must simply click on a reference point in an image. Picture Man generates an area, which encloses all pixels with colors or greys, which are close to the color or grey value in the reference point.
+To start processing double click the left button to indicate whether you want to process an interior or exterior of the area.
+
+Note! If you are repeatedly processing the image with the previous type of area then contour of this area will be shown in the image after entering a processing command. You may accept it by double clicking the left button of the mouse or cancel by entering a new area. You can also use Shift+Mouse click to edit previous area (it doesn't work in the case of Magic wand selection)!
+In some cases Picture Man allows to select area and to change its dimensions and/or place it into another position. In this case Picture Man keeps first area for another processing. Still, you can work with a changed fragment when you switch to the Freehand mode and turn off the Preserve mask option in the Options menu.
+
+The input of a local processing area may be cancelled by clicking the left button of the mouse when the cursor is positioned beyond the limits of the Picture Man window or by pressing the Esc key.
+
+Painting
+After entering a command the cursor in the form of a pen appears. You can paint anywhere in an image. It's convenient to use right mouse button to erase mistakes.  System cancels painting mode when you change type of the area or load new image.
+Note!  In the case of painting Picture Man treats a degree of edge smoothing as a degree of transparency.
+
+USING THE CLIPBOARD
+Many commands in Picture Man use the clipboard. The clipboard is a temporary storage area where an image or a fragment of an image can be placed. This stored image can be pasted from the clipboard to any Picture Man window or to another application.
+The clipboard can contain only one image at a time. Each new Copy command replaces current content of the clipboard.
+Copy 
+The Copy sub menu in the Edit menu has two entries: the Copy bitmap and the Copy truecolor command.
+The Copy bitmap command places current content of the window as is, depending on color/dithering options. This command can be used to port image to another application, such as Windows Paintbrush.
+The Copy truecolor command is intended to storing an image or an area of an image for subsequent use within Picture Man or for transferring it to another Picture Man window. After entering this command system offers you to select an area in a usual way.
+Paste.
+The Paste command allows you to copy the content of the clipboard onto an image. This command is active only when the clipboard contains some picture in standard Windows format (DIB or DDB). After invoking this command, the "Paste" dialog box appears. You must enter transparency value for the inserting content of the Clipboard. Click on OK. Then Picture Man offers you to enter a bounding rectangle for the fragment to be inserted. Edit it in a usual way.  There are two additional editing commands which are available in this mode: 
++	Mouse click within a bounding box with pressed Shift key sets an original size of a fragment. 
++	If you drag sides of a bounding box with pressed Control key, the dimensions of a bounding box change proportionally.
+
+PASTE FROM FILE
+The Paste from command in the Edit menu allows you to insert fragment from an arbitrary image file into current image. After entering this command, the "Paste" dialog box appears.
+Choose appropriate logic of insertion between
++	replace - inserts an image as is
++	black level transparent - inserts an image with transparent black areas 
++	white level transparent - inserts an image with transparent white areas 
+
+PRINTING
+For creating a printed copy of an image choose the "Print..." command of the File menu. The "Print" dialog box appears. Enter  desired size of an imprint. You must choose appropriate units of measurements before that (pels, inches or centimetres). Check  the "Correct proportions" check box if you want to preserve proportions of an image. In this case entered dimensions are treated as dimensions of the bounding rectangle.
+You can print either directly to printer or save rasterised image into TIFF or BMP file. In the first case Picture Man uses default printer resolution, otherwise you must enter appropriate resolution values and define target filename.
+Picture Man allows to use a lot of rasters to convert to black and white image and print it on paper. Most useful ones are the Fatting and the Error diffusion. Another rasters can be used to create artistic effects.
+Some printer correction is often required due to effect of dots overlapping. It causes some darkening of a printed copy in comparison with original image, especially in the case of high-resolution rasters such as the Error diffusion. To compensate this effect you can use either parametric method or directly specify correction table. In the first case the greater value, the more correction, the lighter an imprint. Actually, the correction value should be about 1 for the Fatting and about 90-95 for the Error diffusion rasters. The format of correction table is described in the Appendix.
+Picture Man also allows you to print a mirror copy of an image and to negate it as well.
+To start printing click on OK button.
+
+VIEWING AN IMAGE
+Picture Man allows to zoom in and out an image. Zoom in to work on small details in an image. Zoom out to view large image and compare several images. The available steps are: Zoom in: 2x, 4x, 6x, 8x, Zoom out: 1/2, 1/4, 1/6, 1/8, and the Original size command. When you enter the command correspondent to zooming in an image, the cursor in the form of loop appears. Click on a place you want to zoom in. When you magnify the view, an image often cannot be fully displayed within Picture Man window. In this situation, scroll bars appears along the right and bottom edges of the image. To navigate around the image click on the scroll bars or drag their thumbs.
+When the Original size command is selected, an image is displayed with each pixel being shown by one screen pixel. This is a normal view of an image; when you open images they are displayed at this view.
+
+SETTING COLOR AND DITHERING OPTIONS
+Picture Man internally handles an image as 24-bit truecolor one. It allows to apply all available processing operations to all types of images. Nevertheless, Picture Man can display image as a Black & White one, Greyscale, 16- and 256 - Paletted  (or Indexed) image with uniform or optimized palette, and 15-bit HiColor image as well.  You can save an image in appropriate format by default (the Save As command allows to change data type at final step).  
+Error diffusion and Bayer dithering are available in most cases. Twenty additional dither patterns for creating artistic effects can be used for Black & White rasterisation.
+When you load a new image, Picture Man always sets its native options. To change them, select the Color/dither options command from the View menu. The "Colors" dialog box appears. Choose appropriate items from the Color depth and Dither combo boxes. If you choose a combination, which makes no sense, the OK button will be disabled.
+The Repaint button allows you to obtain a preview of an image with options you've just set.
+The Number of colors entry box allows you to set a number of colors for the case of optimized palette.
+The remaining two controls: The Fast view and the Repaint after processing serve to choose compromise between speed and accuracy and are discussed in the following section. 
+
+OPTIMIZING PERFORMANCE
+Picture Man gives you the several possibilities to fine tune it's performance and to choose a compromise between speed and accuracy. 
+
+Picture Man offers you both fast and precise methods of visualisation. The precise method always gives you the most possible adequate visualisation of an image, but it's sometimes time expensive. For example, visualisation of an image in 256-color optimized palette mode can be rather slow. To overcome this drawback, the Fast view mode is available, in which you obtain must but more or less adequate presentation of an image. For example, Picture Man outputs an image on the screen in uniform palette while its native format is 256-colors optimized palette. To turn on and off the Fast mode, click on the Fast view check box in the Colors dialog box. It appears after selecting the Color/dither options command in the View menu. There is also the Repaint after processing check box in this dialog. When it's checked, Picture Man repaints all of an image after each command you enter. It's important, for example, when you paint in the Optimized palette mode. You can choose a color, that is not presented in a current palette. In this situation it's necessary to recalculate the palette. Picture Man makes it automatically when the Repaint after processing  box is checked. Otherwise you should use the Repaint command from the View menu from time to time to refresh optimal palette. 
+
+Picture Man allows you to use a temporary bitmap for image presentation (this option doesn't work on truecolor adapter). The usage of a temporary bitmap can dramatically increase speed of switching from one Picture Man window to another, because it increases speed of window refresh. From the other side, temporary bitmap requires an additional amount of memory. 
+Enter the Use temporary bitmap command from the View menu to toggle this option. 
+
+You can also disable a creation of a backup copy of an image before each command. In this case you save some memory and sometimes get some increase in speed but the Undo and the Erase commands in the Edit menu will be disabled.
+
+SHOWING AND HIDING THE TOOLBOX
+The Toolbox  command in the View menu allow you to set whether or not the Toolbox is displayed on the screen. Picture Man stores position of toolbox in PMAN.INI file and keeps it the same for all instances.
+Use the Progress indicator command to set whether or not the Progress indicator appears during processing and file operations.
+
+CALIBRATING YOUR DISPLAY
+You should calibrate your display before you start working with images for the first time. Re calibrate when you change your monitor, display adapter or the environment in which you work.
+To calibrate your display you should load the GAMMA.TIF image containing four pairs of colored rectangles.
+Select the Monitor gamma command in the View menu. The Monitor gamma correction dialog box appears. Use scroll bars to adjust gamma correction values for  R, G, B channels. As a result of correction, inner and outer rectangles must be of the same color.
+
+
+PAINTING
+The key feature of Picture Man is that it gives you an opportunity to make each of 46 available operations with the pen. 
+Painting tools
+There are 2 available types of painting tools from the following set:
+Square pen. You can choose among 6 available sizes from 1 to 11 pixels.
+Circle pen. You can choose among 6 available sizes from 1 to 11 pixels.
+To select a transparency (or initial transparency) of painting tool, click on appropriate Edge button in the Tool box or select one of the commands in the Edge sub menu of the Options menu. In the case of painting Picture Man treats a degree of smoothing as a degree of transparency.
+
+Painting with Transformations.
+You are encouraged to use transformations in painting mode as a mean for retouching and creating special effects. Below there are only some tips:
++	Use the Rubber deformation to shift parts of an image interactively. You must first define a direction and a relative value of the deformation. With the help of this tool you can draw a large defect to an edge or a boundary or gently deform image . 
++	Use the Flip and Rotate commands to mix pixels of an image.
++	Use the Rotate on small angle and Whirlpool deformation to create the effect of a smoke or a turbulence
++	Use the Elliptic concave mirror to eliminate small defects.
+
+Painting with Tune operations.
+You can paint with tune processing to adjust gently color/grey scale content in small parts of an image, to tinge them. The Gamma correction command is simplest to use in such a way, though you should try all available commands.
+
+Painting with Fill area operations.
+Select the Color command in the Fill area sub menu of the Edit menu for common painting. You should activate the Color selection dialog box to change a color of the pen during painting. Just press the Color box in the Tool box or select the Color command in the Options menu.
+Painting with vertical or horizontal gradients gives a strong impression of a volume. Try it and have a fun!
+Painting with patterns gives you possibility to create backgrounds or to edit them precisely.
+The Patch command in painting mode gives you the best unique retouching tool for eliminating defects! We are proud to provide you with this tool.
+
+Painting with Processing operations.
+Picture Man gives you an opportunity to smooth, sharpen an image, outline contours, scatter pixels, make special effects. All these features are at your service in the painting mode!
+
+PICTURE MAN  REFERENCE MANUAL
+
+MENU ITEM - FILE
+
+File - New... Command 
+The "New..." command creates a new image. 
+When you choose the "New..." command, a dialog box containing the following options appears:
+Width - sets the width of the image.
+Height - sets the height of the image.
+Unit - sets the unit of measurement to inches, centimetres, or pixels.
+Resolution - sets the resolution of the image in dots per inch.
+
+File - Open... Command 
+The "Open..." command opens a file that has been previously created. 
+When you choose the "Open..." command, a dialog box containing the following options appears:
+List Files of Type : sets the file format for the image file you want to open.
+File Name - indicates the filename. Enter the name of the selected file.
+Files - displays the files in the current directory with the selected file extension. Highlight a file to place the name in the "Filename" list box.
+Directories - displays the directories you can choose from. The current directory is shown 
+above the "Directories" list box.
+Drives - displays the drives you can choose from. 
+Picture Man uses common dialogs to manipulate files. You should refer to your Microsoft Windows User's  guide for additional information.
+
+Reload Command
+Replaces the current image with the last saved version.
+
+Grab Command
+This command allows you to accept an image from video board or other capturing device while you are in Picture Man. The device must have a very simple driver described in the Appendix 1.
+
+File - Acquire
+This command allows you to accept an image from video board or other capturing device, which has a TWAIN-complaiant driver.
+File - Select source
+The "Select source" command allows you to select an appropriate TWAIN source before image acquisition. 
+
+File - Save Command 
+The "Save" command saves the image to disk. 
+If Picture Man can't save the image in loaded format, (for example you try to save GIF truecolor image), the Save As  dialog box appears.
+
+File - Save As... Command 
+Use the "Save as..." command  to assign a new filename, file format, and file path for the loaded image.
+When you choose the Save As command, a dialog box containing the following options appears:
+List Files of Type - sets the file format for the image file you want to save.
+File Name - indicates the filename. Enter the name of the selected file.
+Files - displays the files in the current directory with the selected file extension. Highlight a file to place the name in the "Filename" list box.
+Directories - displays the directories you can choose from. The current directory is shown above the "Directories" list box.
+Drives - displays the drives you can choose from. 
+Sub format - sets the file sub format for the image file you want to save.
+Dithering - sets the dithering method for the image you want to save.
+Number of colors - sets the number of colors for the image you want to save.
+
+File - Convert... Command 
+Use the "Convert..." command  to convert the loaded image in various file formats.
+When you choose the "Convert..." command, a dialog box containing the following options appears:
+List Files of Type - sets the file format for the image file you want to convert.
+File Name - indicates the filename. Enter the name of the selected file.
+Files- displays the files in the current directory with the selected file extension. Highlight a file to place the name in the "Filename" list box.
+Directories - displays the directories you can choose from. The current directory is shown above the "Directories" list box.
+Drives - displays the drives you can choose from. 
+Sub format - sets the file sub format for the image file you want to convert.
+Dithering - sets the dithering method for the image you want to convert.
+Number of colors - sets the number of colors for the image you want to convert.
+
+File - Print... Command 
+The "Print..." command  prints the image.
+When you choose the "Print..." command, a dialog box containing the following options appears:
+Units - sets the unit of measurement to inches, centimetres, or pixels.  
+Image Sizes and Offsets  sets size and offset of image to be printed. Choose "Correct proportions" box if you want to save aspect ratio of loaded image.
+Print to - sets whether you want to print an image on a printer or in a file.
+Resolution - sets the resolution for output file if you choose print in a file.
+Raster - sets dithering method for printing.
+Dot correction method and value - sets dot correction method and value of correction. 
+Negative - negates printed image.
+
+File - Exit Command
+This command shuts down Picture Man.
+
+MENU ITEM - EDIT
+
+Edit - Undo Command
+Undoes the result of last operation.
+
+Edit - Erase... Command
+Undoes the result of last operation in a selected area.
+
+Edit - Transformation Commands
+Use the Transformation commands to change image size and resolution, to clip a fragment  and to generate different special effects.
+Note! You can't insert a result of transformation in a selected area in unregistered version. In this case Picture Man only shows you a preview image. Anyway, you can insert a result of transformation in unregistered version using Ctrl-Ins for placing a selected area onto clipboard and then pasting it.
+
+Edit - Transformation - Size... Command	
+Changes the size and/or resolution of the entire image.
+When you choose this command, a dialogue box containing the following options appears:
+Width - specifies the width for the entire image.
+Height - specifies the height for the entire image.
+Units - specifies the unit of measure used for the dimensions of the image.
+Resolution - specifies the resolution of the image, you may set screen, printer or custom resolution of the image, resolution is measured in dots per inch (DPI) units.
+
+Edit - Transformation - Clip Command	
+Lets you clip any square part of the entire image using the mouse. When you choose this command, you must select a rectangular area on the image and double click within selected area.
+
+Edit - Transformation - Move Command
+Moves a selected area.
+1. If you are not in painting mode you must select area in a usual way, and then double click within selected area to accept selection. The preview of area to be moved will be displayed. Move the
+preview into the needed place, resize the preview and double click the left mouse button.
+2. If you are in painting mode first select a reference point by pressing Shift key and left mouse
+button simultaneously, then press left mouse button to move part of image located near reference point to a needed place. This command is often called "Clone".
+
+Edit - Transformation - Flip Command	
+Flips the selection area or an entire image horizontally or vertically.
+
+Edit - Transformation - Rubber Command
+This command lets freely deform the selection area or an entire image  using mouse as it printed on rubber. When you select the Rubber command, a grid appears within selected area or entire image. Press left mouse button while pointing at the appropriate point and drag the mouse to establish a degree of deformation (a boundary of the area remains unchanged, a reference point moves to selected place, another points change their position simulating deformation of a rubber). Double click within selected area to deform image. Then change size and position of a fragment. Double click to accept the result, click anywhere outside Picture Man window or press Esc key to cancel.
+When you are in a painting mode, Picture Man draws grid within it's window. In this situation you define a relative deformation. The Rubber command in a painting mode provides you with an unique tool which lets you to shift parts of an image interactively. This powerful tool gives you an opportunity to retouch defects just shifting on them adjacent parts of an image.
+
+Edit - Transformation - Deformation Command
+Lets deform the selection area or an entire image to give the impression of reflection from curved mirror and produce a whirlpool deformation.
+When you choose this command, a dialog box containing the following options appears:
+Type of mirror - specifies the type of mirror.
+Parameters - specifies the step of deformation and wave length for waved mirrors.
+Use the preview window on left size of dialog box to select appropriate type and parameters of deformation. Click OK button to start processing.
+
+Edit - Transformation - Rotate... Command
+Rotates the selected area or entire image by degrees.
+When you choose this command, a dialog box containing the following options appears:
+Angle - set the amount of rotation in degrees counter clockwise. To rotate clockwise, enter a negative value.
+
+Edit -Tune Commands
+
+Use the Tune commands for color correction and tuning  the contrast and brightness of an
+image.
+
+Edit -Tune - RGB control - TV ... Command
+Allows to correct contrast, brightness and color of  the selected area or entire image. When you choose this command, a dialog box appears.
+Use scroll bars to correct contrast, brightness, and color saturation of the selected area or entire image.
+
+Edit - Tune - RGB control - Linear... Command
+Changes contrast and intensity of brightness and color, manipulates RGB components of an image or a selected area.
+When you choose this command, a dialog box  appears.
+There are 5 controls with correspondent dependence curves for brightness (half-tone), color content, red,  green and blue components.  (Horizontal axis corresponds to input values, vertical axis corresponds to output ones.)
+1. Select needed control by pointing it with the mouse arrow and clicking  it's left button.
+2. Place the mouse pointer on a filled rectangle.
+3. Move a rectangle while holding the mouse button pressed.
+4. Release the mouse button. Image will be re drawn.
+5. Choose Restore  to  restore initial image colors.
+6. Choose OK to process image.
+
+Edit - Tune - Gamma correction... Command
+Changes contrast of an image using gamma correction in the either image or selected area.
+After entering this command the dialog box is displayed with the scroll bar for adjusting the contrast and brightness within the range from 0.25 to 4.0 .
+ When changing the position of the scroll bar by pressing the button of the mouse;
+- to the left (nearer to 0.25) - the image is brightening;
+- to the right (nearer to 4.0) - the image is darkening;
+You may also select Red, Green or Blue component of image to correct components separately.
+
+Edit - Tune - Expand Command
+Enhances low-contrast images. Simply expands their  brightness into 0...255 in the either image or selected area .
+
+Edit - Tune - Equalisation Command
+Enhances low-contrast images. Equalises distribution of image brightness in the all of image or a selected area.
+
+Edit - Fill Area Commands
+Use the Fill area commands to fill a selected area of an image with color, gradients, rainbows or patterns or to eliminate defects within the area using Patches..
+
+Edit - Fill Area - Color - Plain:
+Fills an area with the system color. To select system color activate the Color selection dialog box. Click on the Color box in the Toolbox or select the Color/Select command in the Options menu. Another  mean to select a color is to pick it up from a loaded image. To pick up the color, select  the Color//Pick up command in the Options menu and click on appropriate place in an image.  One more way is to use Control-Click.
+
+Edit - Fill Area - Color - Fluctuated:
+Fills an area with fluctuated system color. Creates an impression of natural painting. After entering this command a dialog box appears. You can define the size of fluctuations and their depth. Click on OK to start operation.
+
+Edit - Fill Area  - Gradients:
+Fills an area with vertical, horizontal or radial gradients. After entering of one of these commands the Gradients dialog box appears. You must set boundary colors for gradients. Click on color boxes to activate the Color selection dialog box.
+
+Edit - Fill Area - Patterns:
+Fills an area with an image from another file. When you select one of these commands, the Open file dialog box appears. Select an appropriate file and click on OK. 
+When you select the Tiled pattern command, Picture Man fills area with tiled images. This is a pattern in a strict sense.
+When you select the Scaled pattern command, Picture Man scales an image to insert to fit dimensions of a loaded image. This is a useful way to import backgrounds, especially in combination with the Magic wand selection tool.
+When you select the Fitted pattern command, Picture Man scales an image to insert proportionally to enclose a loaded image. This is a most convenient  way to import backgrounds, especially in combination with the Magic wand selection tool.
+
+Edit - Fill Area - Patches:
+This group of commands provides you with unique tool for eliminating large defects in an image. Picture Man can fill an area with boundary values just continuing an image inside the area.
+The Horizontal patch preserves horizontal lines.
+The Vertical patch preserves vertical lines.
+The Full patch makes total eliminating of defects.
+It's highly recommended to use the Full Patch command in the painting mode as a retouching tool. Just try it!
+
+Edit - Processing Commands
+
+Use the Processing commands for enhancement of an image and creation of special effects.
+
+Edit - Processing - Smoothing:
+Makes an image smooth.
+1. Enter needed filter size. The more size, the softer the result.
+2. Choose OK.
+
+Edit - Processing - Sharpening:
+Makes an image sharper, but sometimes increases noise.
+
+Edit - Processing - Heavy Sharpening:
+Makes an image even more sharper, but often increases noise.
+
+Edit - Processing - Spot removing:
+This command changes the value of each pixel to the median value of the surrounding group of pixels. Effectively removes spots and scratches.
+1. Enter needed filter size. The more size, the stronger the effect.
+2. Choose OK.
+
+Edit - Processing - Maximum:
+This command replaces pixel value with the maximum value of the surrounding group of pixels.
+1. Enter needed filter size. The more size, the stronger the effect.
+2. Choose OK.
+
+Edit - Processing - Minimum:
+This command replaces pixel value with the minimum value of the surrounding group of pixels.
+1. Enter needed filter size. The more size, the stronger the effect.
+2. Choose OK.
+
+Edit - Processing - Hand Drawing
+This command creates a strong impression of a pastel painting.
+1. Enter needed filter size. The more size, the wider the contours.
+2. Choose OK.
+
+Edit - Processing - Cleaning Background
+This command smoothes flat areas of the image, leaving sharp edges unchanged. Is recommended to pre-process images captured from video boards.
+1. Enter needed filter size. The more size, the softer the result.
+2. Choose OK.
+
+Edit - Processing - Mosaic
+This command creates an image composed of tiles of square or rectangular various brightness.
+1. Enter needed filter size. The more size, the stronger the effect.
+2. Choose OK.
+
+Edit - Processing - Emboss
+This command creates the impression of an image raised in relief. The system color is used for coating.
+
+Edit - Processing - Outline Contours
+This command outlines contours of an image.
+
+Edit - Processing - Scatter
+This command replaces pixel value with the value  randomly selected in the surrounding group of pixels.
+1. Enter needed filter size. The more size, the stronger the effect.
+2. Choose OK.
+
+Edit - Copy Commands
+Use the Copy commands to exchange images between various instances of Picture Man and other tasks.
+
+Edit - Copy - Copy Truecolor Command
+Use this command to put selected area of the image on clipboard to send it to another instance of Picture Man.
+
+Edit - Copy - Copy Bitmap Command
+Use this command to put currently displayed bitmap on clipboard.
+
+Edit - Paste Command
+Inserts the Clipboard content into a selected area of an image.
+
+Edit - Paste From... Command
+Inserts the new image from file into a selected area of an image.
+You must select filename of images to insert.
+
+MENU ITEM - VIEW
+
+View - Zoom Out Command
+Shows a whole image that is larger than the drawing area.
+You can choose among  4 levels, from 2:1 to 8:1.
+
+View - Zoom In Command
+Magnifies part of the image so you can change one pel (pixel) at a time. 
+These commands allow 4 levels of magnification, from 1:2(lower magnification) to 1:8 (the highest magnification).
+
+View - Original Size Command
+Returns the image to normal resolution after you choose Zoom Out or Zoom Out. 
+
+View - Color/Dither options Command
+The "Color/Dither options ..." allows you to change color depth and dithering method of viewed image.
+When you choose the "Color/Dither options..." command, a dialog box containing the following options appears:
+Color depth - sets the color depth of viewed image.
+Dithering - sets dithering method.
+Number of colors - sets number of colors in viewed image.
+Fast view - sets fast view mode.
+Repaint after processing - cause image to be repainted after processing. This mode is useful when optimized palette is chosen.
+
+View - Monitor gamma Command
+You should calibrate your display before you start working with images for the first time. Re calibrate when you change your monitor, display adapter or the environment in which you work.
+To calibrate your display you should have some original image and a captured or scanned image file.
+Select the Monitor gamma command in the View menu. The Monitor gamma correction dialog box appears. Use scroll bars to adjust gamma correction values for  R, G, B channels. As a result of correction, a viewed image must look similar to it's original. Click on OK to store the correction values.
+Picture Man will now correctly and consistently display images in your working environment.
+
+
+View - Repaint Command
+Caused image to be repainted.  This command is useful when optimized palette is chosen.
+
+View - Use temporary bitmap Command
+This command causes Picture Man to use temporary bitmap to show the image.
+
+View - Animate Selection Command
+This command causes Picture Man to animate selection border for best preview during area selection.
+
+View - Toolbox Command
+Shows or hides Toolbox.
+
+View - Progress indicator Command
+Causes Picture Man to show or hide Progress indicator during processing.
+
+View - Paint on Icon Command
+Causes Picture Man to draw the image on icon while minimised.
+
+
+MENU ITEM - OPTIONS
+
+Options - Area:
+Changes type of area to process. Choose between Whole image, Rectangle, Ellipse, Polygon, Freehand, Pen, Magic wand. Menu item associated with current selection is checked. 
+
+Options - Edge:
+Changes edge of a local area. Choose between Sharp, Smooth low, Smooth medium and Smooth high. Menu item associated with current selection is checked.
+
+Options - Pen/Brush/Line size:
+Sets size of a pen and a line width. Choose between 1(x1),  3(x3),  5(x5),  7(x7),  9(x9),  11(x11) pixels.
+
+Options - Pen/Brush  type:
+Choose between square and circle pen.
+
+Options - Color:
+Changes system color. The Color selection dialog box appears. Select appropriate color. Then you can close the dialog box or leave it active for subsequent use. Picture Man uses Microsoft Common Dialogs for color selection. Please, refer to your Window's Users Guide for additional information.
+
+Options - Magic wand:
+To define the degree of similarity (or the Tolerance) enter the Magic wand command in the Options menu. The "Magic Wand options" dialog box appears. The more value of tolerance, the wider a selected area. You can also choose between two models of color matching: first, named RGB model, matches R, G, B channels independently, second, HVS model, relies more on color  similarity than on brightness. In addition, Picture Man allows to select either unifold or non-unifold area.  The term Unifold means that you can get from any point of an area to another point without crossing the boundary.
+
+Options - Create Backup:
+When Create Backup mode is on a previous version of the image is preserved on disk and the Undo command is enabled. In this case you can also use Esc key to cancel current operation.
+When Create Backup mode is off the Undo command is disabled.
+
+Options - Preserve Mask:
+In some cases Picture Man allows to select area and to change it's dimensions and/or place it into another position. By default Picture Man keeps first area for another processing. Still, you can work with a changed fragment when you switch to the Freehand selection and turn off the Preserve mask option in the Options menu.
+
+Options - Acquire Native format:
+Picture Man allows to force a Native transfer mechanism for TWAIN image acquisition instead of Memory-buffered transfer.
+
+MENU ITEM - HELP
+
+Help - Help on Help:
+Using Help will explain how to use built in help systems.
+
+Help - Index:
+Index will call up Picture Man's built in help system. If you are unfamiliar with using built in help systems, select the Help - Help on Help option.
+
+Help - About:
+Displays general information about Picture Man v.1.55. Press the OK button to close the About box.
+
+
+FILE FORMATS SUPPORTED
+
+General Information:
+Pictures that may be used by PC computers are saved in a lot of formats. Picture Man supports a limited number of these formats. User can develop his own DLL module to support his own formats.
+
+BMP File Format:
+The BMP format will support bits per pixels of 1, 4, 8 and 24. Picture Man supports all possibilities.
+BMP files can be used as "wallpaper" for the background when running in Windows. See your Windows documentation on how to use a BMP file as wallpaper.
+
+GIF File Format:
+The GIF format will support bits per pixels of 1, 4 and 8. Picture Man supports all possibilities.
+GIF files were designed to create the smallest possible picture files for uploading and downloading from BBSs.
+There are 2 GIF file versions; 87a and 89a. 
+Version 87a was the first of the two versions to appear.
+Version 89a added new features to the 87a format. None of these new 89a features are used by Picture Man.
+Picture Man will also read interlaced GIFs.
+Since Picture Man does not use any of the new features of the 89a version, all GIF files will be saved as 87a. This will allow older GIF viewers to display the pictures that are created by Picture Man.
+NOTE: Some GIF files contain more than one picture. Picture Man will only process the first picture in the file.
+
+PCX File Format:
+The PCX format will support bits per pixels of 1, 4 and 8. Picture Man supports all possible bits per pixel.
+
+TIFF File Format:
+The TIFF format will support bits per pixels of 1, 4, 8 and 24. Picture Man supports all possibilities.
+The TIFF format differentiates between types of pictures. These categories are: black and white, grey scaled and colored. Picture Man supports all of these categories. 
+The TIFF format can use one of four encoding routines. These encoding routines are: No-compression, Pack bits, LZW, Huffman.
+Picture Man will read and write files that use the encoding routines of: No-compression, Pack bits, Huffman and LZW.
+
+TARGA File Format:
+The TARGA format will support bits per pixels of  8, 15, 16, 24 and 32. Picture Man supports all possibilities.
+The TARGA format differentiates between types of pictures. These categories are:  grey scaled, colormapped, and truecolor. Picture Man supports all of these categories. 
+The TARGA format can use one of three encoding routines. These encoding routines are: No-compression, Run-Length, and Huffman.
+Picture Man will read and write files that use the first two of these encoding routines.
+
+JPEG File Format:
+The JPEG format will support bits per pixels of  8 and 24. Picture Man supports all possibilities. 
+JPEG decompressor can read non-interleaved grey scale and fully-interleaved true color images.
+JPEG compressor writes non-interleaved grey scale and fully-interleaved true color images with (2h:2v)(1h:1v)(1h:1v) sampling factors.
+JPEG compressor uses a quality parameter which may be of range 1..100. The more the quality parameter, the better the quality of the image stored, the greater the size of compressed image file.
+
+Unformatted Byte Array:
+Picture Man can read grey scale images stored in file as unformatted byte array (row by row.)  In this case user must enter right values of width and height of an image in pixels and data offset in the file.
+
+EPI File Format:
+Picture Man allows you to write 8-bit grey and 24-bit RGB encapsulated PostScript images.
+
+Development of new converters.
+
+Picture Man gives the user an opportunity of developing and including an unlimited number of new file formats in addition to already existing ones.
+The converter module is a dynamic link library (DLL). DLL is loaded into the memory during the Picture Man call. DLL with read and write converters must be registered in PMAN.INI file in [SOURCES] and [DESTINATIONS] sections respectively.
+Each DLL must include a set of predefined exported functions which can be called by Picture Man. 
+Note! Format of converters in version 1.55 has slightly changed in comparison with version 1.02.
+The library mustn't contain static variables to store data between calls. All intermediate data must be stored in private data memory block. The size of this block must be returned by the GetPrivateSize function. It allows Picture Man to multitask without restrictions.
+
+For read converters the following functions are required:
+int FAR PASCAL LibMain(HANDLE hModule, WORD wDataSeg,WORD cbHeapSize, LPSTR lpszCmdLine);
+int FAR PASCAL WEP(int bSystemExit); 
+WORD FAR PASCAL Magic(void);
+DWORD FAR PASCAL GetFlags(void);                    
+void FAR PASCAL GetDescription(LPSTR str);
+void FAR PASCAL GetExtension(LPSTR str);
+int FAR PASCAL ReadHeader(LPINFO p, void far *lpPrivate);
+int FAR PASCAL ReadRow(int row, LPBYTE p, void far *lpPrivate);
+void FAR PASCAL CleanUp(void far *lpPrivate);
+int FAR PASCAL SetOptions(HWND hWnd, void far *lpPrivate);
+int FAR PASCAL ReadFile(int tempfile, void far *lpPrivate,
+                        FARPROC lpIndicator );
+int FAR PASCAL GetPrivateSize(void);
+
+Functions LibMain and WEP are standard DLL entry and exit procedures respectively.
+
+Function Magic is identification procedure and must not be changed. It returns SRC_MAGIC number.
+
+Function GetFlags returns flags for SetOptions Dialog box. If this function returns INFO_HASOPTIONS, Picture Man will call SetOptions function before conversion.
+
+Function GetDescription provides name of image format supported by the given converter (e.g, "ZSoft Paintbrush PCX".) The name is returned in str variable, and it's length must be less then 40.
+
+Function GetExtension provides extension of image file for given format (e.g., "PCX".) The extension is returned in str variable, and it's length must be less then 4
+
+Function GetPrivateSize return size in bytes of private memory block lpPrivate, this memory block is allocated by Picture Man before ReadHeader function is called. Development of converters modules can use this memory block to store any private information.
+
+Function ReadHeader reads file header and fills INFO structure ( formal parameter p points to this structure.)
+The fields of INFO structure are listed below:
+    OFSTRUCT of -  Opened Source/Destination file structure (Picture Man opens file itself and fills this field);
+    int  file - Opened Source/Destination file (Picture Man opens file itself and fills this field );
+    WORD w -  Width of file in pixels ( ReadHeader must fill this field)
+    WORD h -  Height of file in pixels ( ReadHeader must fill this field)
+    WORD bps -  Bits per pixel parameter (1, 4, 8, 24 ) ( ReadHeader must fill this field)
+    WORD numcolors -   Actual number of colors (0 for bps = 24 ) ( ReadHeader must fill this field)
+    WORD nplanes -  Number of bitplanes ( ReadHeader must fill this field)
+    WORD bplin - Bytes per row for one bitplane ( ReadHeader must fill this field)
+    DWORD   xres - Horizontal resolution ( ReadHeader must fill this field)          
+    DWORD   yres - Vertical resolution ( ReadHeader must fill this field)          
+    WORD    resunit -  Resolution unit for xres and yres fields( ReadHeader must fill this field). The value of this field may be one of the following set:
+
+RES_UNKNOWN  - Unknown resolution unit   
+RES_NOUNIT   - Resolution unit is undefined. The aspect ratio is equal xres/yres.  
+RES_SCREEN   - Same as RES_NOUNIT   
+RES_DPI      - Pixels per inch   
+RES_DPCM     - Pixels per centimeter
+RES_DPM      - Pixels per meter
+
+    DWORD   flags - specified format attributes( ReadHeader must fill this field)
+This attributes are described below. Two or more attributes can be combined by using the bitwise OR operator.
+Color/half-tone attributes
+      INFO_COLOR     - Image is colored  
+      INFO_PALETTE   - Image is paletted
+      INFO_NEGATIVE  - Image is negative
+File organisation bits attributes
+      INFO_TEMPFILE    - Image can be read only by using temporary file
+      INFO_COMPRESSED  - Image is compressed
+      INFO_FORWARD     - Image can be read only from the top to the bottom.
+      INFO_BACKWARD    - Image can be read only from the bottom to the top.
+      INFO_RANDOM      - Image can be read randomly.
+Row organisation bits attribute
+      INFO_PACKED     - (bps < 8) bits are shifted together
+      INFO_SEPARATE   - (bps !=8) bitplanes are separated
+
+    PAL     pal -  Color palette ( ReadHeader must fill this field).
+PAL is an array with dimensions of [3][256] (r components, then g components, then b components subsequently)
+
+Function ReadRow reads specified image row. Bits organisation of image row  ( number of bit planes and bit per pixel parameter ) must correspond to information stored in INFO structure filled by ReadHeader function. 
+If nplanes field of INFO structure equals 1, pixels are stored in the row subsequently as RGBRGBRGB... for true color images and PPPPPP... for paletted and grey scale images. Else if nplanes field of INFO structure not equals 1, pixel values are stored separetly in subsequent arrays, such as RRRRRR...GGGGGG...BBBBBB for true color images, and P1P1P1....P2P2P2...P3P3P3...P4P4P4 for paletted 4 bit images ( P1-P4 are bits of pixel values).
+
+Function CleanUp frees all auxiliary buffers. Terminates conversion. Picture Man calls this function after conversion before unloading DLL.
+
+Function SetOptions creates dialog box for setting user defined parameters. For example, SetOption function is used for reading unformatted images for entering width and height of the images to be read.
+
+Function ReadFile is called when INFO_TEMPFILE flag is set in the INFO structure. This function fills temporary file created by Picture Man according to the parameters in the INFO structure without header. It is necessary, for example, in the case of compressed interlaced image, when file can't be read subsequently from the beginning to the end or from the end to beginning. Of course, you can use this function in every case, but conversion through temporary file is relatively slow.
+
+For write converters such set of functions is as follows:
+
+int FAR PASCAL LibMain(HANDLE hModule, WORD wDataSeg,WORD cbHeapSize, LPSTR lpszCmdLine);
+int FAR PASCAL WEP(int bSystemExit); 
+WORD FAR PASCAL Magic(void);
+DWORD FAR PASCAL GetFlags(void);                    
+void FAR PASCAL GetDescription(LPSTR str);
+void FAR PASCAL GetExtension(LPSTR str);
+int FAR PASCAL WriteHeader(LPINFO p, void far *lpPrivate);
+int FAR PASCAL WriteRow(int row, LPBYTE p, void far *lpPrivate);
+int FAR PASCAL EndWrite(void far *lpPrivate);
+void FAR PASCAL CleanUp(void far *lpPrivate);
+int FAR PASCAL SetOptions(HWND hWnd, void far *lpPrivate);
+int FAR PASCAL GetPrivateSize(void);
+
+Functions LibMain and WEP are standard DLL's entry and exit procedures respectively.
+
+Function Magic is identification procedure and must not be changed. It returns DST_MAGIC number.
+
+Function GetFlags sets flags for converter capabilities.
+These flags are described below. Two or more attributes can be combined by using the bitwise OR operator.
+   Color/halftone bits 
+   INFO_COLOR -Image may be colored                                 
+   INFO_PALETTE - Image may be paletted                             
+   INFO_NEGATIVE - Image may be negative                            
+   File organisation bits                                           
+   INFO_COMPRESSED - Image may be compressed                        
+   INFO_FORWARD    -  Image must be writen up to down               
+   INFO_BACKWARD   - Image must be writen down to up                           
+   INFO_RANDOM     - Image can be writen arbitrary
+   Row organization bits                                               
+   INFO_PACKED     - (bps < 8) bits may be shifted together            
+   INFO_SEPARATE   - (bps !=8) bitplanes may be separated              
+   Destination capabilites bits                                        
+   INFO_1BPS       -  1-bit data supported
+   INFO_4BPS       -  4-bit data  supported
+   INFO_8BPS       -  8-bit data  supported
+   INFO_24BPS      -  24-bit data  supported
+   INFO_GRAY       -  true grey scale data  supported
+   INFO_STDPAL     -  requires std. EGA/VGA palette                    
+   INFO_ANYPAL     -  any palette  supported
+   Source/Destination capabilites bits                                 
+   INFO_HASOPTIONS -  Picture Man must call SetOptions() function
+
+Function GetDescription provides name of image format supported by the given converter (e.g, "ZSoft Paintbrush PCX".)  The name is returned in str variable, and it's length must be less then 40.
+
+Function GetExtension provides extension of image file for given format (e.g., "PCX".) The name is returned in str variable, and it's length must be less then 4.
+
+Function GetPrivateSize return size in bytes of private memory block lpPrivate, this memory block is allocated by Picture Man before ReadHeader function is called. Developer of converters modules can use this memory block to store any private information.
+
+Function WriteHeader writes file header according to INFO struct, filled by Picture Man.
+
+Function WriteRow writes specified image row. Bits organisation of image row  ( number of bit planes and bit per pixel parameter ) must correspond to information stored in INFO structure filled by PictureMan and transferred to the DLL via WriteHeader call.
+If nplanes field of INFO structure equals 1, pixels are stored in the row subsequently as RGBRGBRGB... for true color images and PPPPPP... for paletted and grey scale images. Else if nplanes field of INFO structure not equals 1, pixel values are stored separately in subsequent arrays, such as RRRRRR...GGGGGG...BBBBBB for true color images, and P1P1P1....P2P2P2...P3P3P3...P4P4P4 for paletted 4 bit images ( P1-P4 are bits of pixel values).
+
+Function EndWrite ends write operation (flashes buffers and so on.)
+Function CleanUp frees all auxiliary buffers. Terminates conversion. Picture Man calls this function after conversion and EndWrite call before unloading DLL.
+
+Function SetOptions creates dialog box for setting user defined parameters. For example, SetOption function is used for TIFF images to set compression method.
+
+After development you must register your converter in PMAN.INI file by adding string in [SOURCES] section for read DLL and in [DESTINATION] section for write DLL. Each string must contain short name of converter and filename of DLL ( dpcx = readpcx.dll for example).
+
+You may find examples of read and write converters in files READPCX.C and WRITEPCX.C  files.
+
+APPENDIX 1. CUSTOM FRAME GRABBER SUPPORT. 
+To add frame grabber support you must register an appropriate DLL library in PMAN.INI file as follows:
+[GRABBER]
+GRABBER=LIBRARY.DLL
+
+The dynamic link library must support high-level interface to Picture Man and must contain exported function 
+int FAR PASCAL Grab (HWND hParent, LPSTR lpImageFileName)
+Arguments:
+hParent - handle to parent window, Picture Man passes the handle of it's main window
+lpImageFileName - pointer to storage for temporary file name. The Grab function must create temporary file in any of the registered formats and pass it's name to Picture Man. The filename must have an appropriate extension. After loading, Picture Man immediately deletes this temporary file. The length of filename must not exceed 64.
+Return value. 0 on success,  1 if the Cancel button was pressed, -1 if an input device is absent or disabled (in this case Picture Man shows the "Hardware error" dialog box).
+
+APPENDIX 2. TWAIN SUPPORT. 
+
+Picture Man supports TWAIN protocol for image acquisition. TWAIN is an emerging standard, developed jointly by several well-known companies. If your scanner, framegrabber or another image capturing device has a MARK TWAIN label, you can use Picture Man together with this device without any problem. You may also want to implement your own TWAIN-complaiant driver (or Source).
+Please, refer to twain@caere.com for additional information.
+For working with TWAIN-complaiant sources the TWAIN.DLL library must be presented in Windows directory. We provide you with the TWAIN.DLL, you must copy it yourself if neccessary. An appropriate TWAIN source must be presented in \TWAIN subdirectory of Windows directory.
+
+APPENDIX 3. FORMAT OF THE CORRECTION TABLE. 
+
+Some printer correction is often required due to effect of dots 
+overlapping. It causes some darkening of a printed copy in 
+comparison with original image, especially in the case of high-
+resolution rasters such as the Error diffusion. To compensate this 
+effect you can use either a proprietary parametric method or directly 
+specify correction table. In the first case the greater value, the more 
+correction, the lighter an imprint. Actually, the correction value should 
+be about 1 for the Fatting and about 90-95 for the Error diffusion 
+rasters. 
+A correction table must be presented in PMAN.INI file. It has the following syntax:
+[printercorrection]
+253=254
+254=255
+255=255
+You must count all keywords from 0 to 255, the right sides denotes the 
+correction function itself.
+
+APPENDIX 4. REGISTRATION FORM. 
+
+                   REGISTRATION FORM
+             Picture Man for Windows ver. 1.55
+
+
+
+
+
+
+
+
+
+
+
+
+Please mail this form with check or money order in US $ to :
+  Igor Plotnikov
+  519 Barry Court,
+  Mechanicsburg PA 17055
+Allow 7 business days for personal check clearing.

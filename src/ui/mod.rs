@@ -225,6 +225,7 @@ impl App {
         let mut tools = Tools::default();
         let mut params = OpParams::default();
         let loaded = settings::load(&mut tools, &mut params);
+        cc.egui_ctx.set_theme(tools.theme);
         let brush_effect = Pending {
             cmd: Cmd::FillPlain,
             params: params.clone(),
@@ -251,7 +252,7 @@ impl App {
             about: false,
             splash_until: 2.5,
             recent: loaded.recent,
-            files: platform::Files::default(),
+            files: platform::Files::new(cc.egui_ctx.clone()),
             paste_params: None,
             brush_effect,
             effect_gen: 0,
@@ -1380,6 +1381,18 @@ impl App {
                     });
                 });
                 ui.separator();
+                ui.menu_button("Theme", |ui| {
+                    use egui::ThemePreference as T;
+                    for (t, l) in [
+                        (T::Dark, "Dark"),
+                        (T::Light, "Light"),
+                        (T::System, "Follow system"),
+                    ] {
+                        if ui.radio_value(&mut self.tools.theme, t, l).clicked() {
+                            ui.ctx().set_theme(t);
+                        }
+                    }
+                });
                 check(
                     ui,
                     "Animate selection",
@@ -1964,6 +1977,11 @@ impl eframe::App for App {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         let ctx = ui.ctx().clone();
         self.popup_was_open = ctx.any_popup_open();
+        // Applied every frame: on the web the preference set at start-up
+        // doesn't stick.
+        if ctx.options(|o| o.theme_preference) != self.tools.theme {
+            ctx.set_theme(self.tools.theme);
+        }
         self.poll_job(&ctx);
         self.ensure_brush();
         self.poll_brush(&ctx);

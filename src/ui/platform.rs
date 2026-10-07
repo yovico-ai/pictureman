@@ -24,12 +24,15 @@ pub struct Picked {
 pub struct Files {
     tx: Sender<Picked>,
     rx: Receiver<Picked>,
+    /// To wake the app when a file arrives asynchronously.
+    #[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
+    ctx: eframe::egui::Context,
 }
 
-impl Default for Files {
-    fn default() -> Self {
+impl Files {
+    pub fn new(ctx: eframe::egui::Context) -> Self {
         let (tx, rx) = mpsc::channel();
-        Files { tx, rx }
+        Files { tx, rx, ctx }
     }
 }
 
@@ -79,7 +82,7 @@ impl Files {
         #[cfg(target_arch = "wasm32")]
         {
             let _ = title;
-            if let Err(e) = pick_in_browser(purpose, self.tx.clone()) {
+            if let Err(e) = pick_in_browser(purpose, self.tx.clone(), self.ctx.clone()) {
                 let _ = self.tx.send(Picked {
                     purpose,
                     name: format!("(file picker: {e})"),
@@ -98,7 +101,11 @@ impl Files {
 /// The browser's own file picker: a hidden `<input type=file>`. (rfd's web
 /// backend panicked when its element was already gone.)
 #[cfg(target_arch = "wasm32")]
-fn pick_in_browser(purpose: Purpose, tx: Sender<Picked>) -> Result<(), String> {
+fn pick_in_browser(
+    purpose: Purpose,
+    tx: Sender<Picked>,
+    ctx: eframe::egui::Context,
+) -> Result<(), String> {
     use eframe::wasm_bindgen::{JsCast, closure::Closure};
     let document = web_sys::window()
         .and_then(|w| w.document())
@@ -117,12 +124,18 @@ fn pick_in_browser(purpose: Purpose, tx: Sender<Picked>) -> Result<(), String> {
             .join(","),
     );
     input.set_multiple(purpose == Purpose::Open);
+    // Some browsers only open the picker for an input that is in the page.
+    input.set_hidden(true);
+    if let Some(body) = document.body() {
+        let _ = body.append_child(&input);
+    }
     let el = input.clone();
     let on_change = Closure::<dyn FnMut()>::new(move || {
         let Some(files) = el.files() else { return };
+        el.remove();
         for i in 0..files.length() {
             let Some(file) = files.get(i) else { continue };
-            let tx = tx.clone();
+            let (tx, ctx) = (tx.clone(), ctx.clone());
             wasm_bindgen_futures::spawn_local(async move {
                 let name = file.name();
                 let bytes = match wasm_bindgen_futures::JsFuture::from(file.array_buffer()).await {
@@ -135,6 +148,8 @@ fn pick_in_browser(purpose: Purpose, tx: Sender<Picked>) -> Result<(), String> {
                     path: None,
                     bytes,
                 });
+                // Nothing else would wake the app to show the file.
+                ctx.request_repaint();
             });
         }
     });

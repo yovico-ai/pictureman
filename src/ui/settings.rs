@@ -93,6 +93,13 @@ pub fn load(tools: &mut Tools, params: &mut OpParams) -> Loaded {
             _ => Edge::Sharp,
         };
     }
+    if let Some(v) = num("VIEW", "THEME") {
+        tools.theme = match v {
+            1 => eframe::egui::ThemePreference::Light,
+            2 => eframe::egui::ThemePreference::System,
+            _ => eframe::egui::ThemePreference::Dark,
+        };
+    }
     if let Some(v) = num("MODE", "BRUSHEDGE") {
         tools.brush_edge = match v {
             1 => Edge::Low,
@@ -240,6 +247,12 @@ pub fn serialize(
         params.font_px.round(),
         params.text.replace('\n', "\\n")
     );
+    let theme = match tools.theme {
+        eframe::egui::ThemePreference::Dark => 0,
+        eframe::egui::ThemePreference::Light => 1,
+        eframe::egui::ThemePreference::System => 2,
+    };
+    let _ = writeln!(s, "\n[VIEW]\nTHEME={theme}");
     s.push_str("\n[FILES]\n");
     for (i, p) in recent.iter().take(MAX_RECENT).enumerate() {
         let _ = writeln!(s, "RECENT{}={}", i + 1, p.display());

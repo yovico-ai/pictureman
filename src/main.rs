@@ -11,6 +11,8 @@ fn main() -> eframe::Result {
             .with_title("Picture Man")
             .with_inner_size([1100.0, 760.0])
             .with_icon(AppAssets::window_icon()),
+        // Show pixels exactly as stored (egui dithers by default).
+        dithering: false,
         ..Default::default()
     };
     eframe::run_native(
@@ -37,7 +39,10 @@ fn main() {
         let start = eframe::WebRunner::new()
             .start(
                 canvas,
-                eframe::WebOptions::default(),
+                eframe::WebOptions {
+                    dithering: false,
+                    ..Default::default()
+                },
                 Box::new(|cc| Ok(Box::new(App::new(cc, Vec::new())))),
             )
             .await;

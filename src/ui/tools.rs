@@ -104,6 +104,7 @@ pub struct Tools {
     pub wand_unifold: bool,
     pub animate: bool,
     pub backup: bool,
+    pub theme: egui::ThemePreference,
 }
 
 impl Default for Tools {
@@ -121,6 +122,7 @@ impl Default for Tools {
             wand_unifold: true,
             animate: true,
             backup: true,
+            theme: egui::ThemePreference::Dark,
         }
     }
 }

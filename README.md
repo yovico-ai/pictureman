@@ -10,24 +10,17 @@ specs, with original addresses and pseudocode, and the tools used.
 
 ![Picture Man](docs/screenshot.png)
 
-## Download
+## Install
 
-Get Linux, Windows and macOS builds from the
-[Releases](https://github.com/yovico-ai/pictureman/releases) page.
-
-- **Windows:** unzip and run `pictureman.exe`.
-- **macOS:** unzip and open `Picture Man.app`. It isn't notarized, so the
-  first time right-click it and choose *Open*.
-- **Linux:** unpack and run `./pictureman`; `pictureman.desktop` and
-  `pictureman.png` are included for menus.
-
-## Build from source
+There are no prebuilt binaries: build it from source with
+[Rust](https://rustup.rs) 1.94 or newer.
 
 ```
-cargo run --release -- [image files…]
+cargo install --git https://github.com/yovico-ai/pictureman
+pictureman [image files…]
 ```
 
-Rust 1.94 or newer.
+Or from a checkout: `cargo run --release -- [image files…]`.
 
 ## Using it
 
